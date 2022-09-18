@@ -4,8 +4,16 @@ function init(){
 }
 
 function harvest() {
-    
+    if (spirit.energy < spirit.energy_capacity) {
+        spirit.move(my_star.position);
+        spirit.energize(spirit)
+    }
+    if (spirit.energy == spirit.energy_capacity) {
+        memory[spirit.id].task = "deposit";
+    }
 }
+
+
 if (tick == 1) {
    init(); 
    console.log("Init");
@@ -17,12 +25,8 @@ for(i=0;i<my_spirits.length;i++){
         memory[spirit.id] = {};
         memory[spirit.id].task = "deposit";
     }
-    if (memory[spirit.id].task == "harvest" && spirit.energy < spirit.energy_capacity) {
-        spirit.move(my_star.position);
-        spirit.energize(spirit)
-    }
-    if (memory[spirit.id].task == "harvest" && spirit.energy == spirit.energy_capacity) {
-        memory[spirit.id].task = "deposit";
+    if (memory[spirit.id].task == "harvest") {
+       harvest();
     }
     if (memory[spirit.id].task == "deposit" && spirit.energy > spirit.energy_capacity / 10){
         spirit.move(my_base.position);
