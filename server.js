@@ -31,6 +31,7 @@ for(i=0;i<my_spirits.length;i++){
     if (!memory[spirit.id]){
         memory[spirit.id] = {};
         memory[spirit.id].task = "deposit";
+        memory[spirit.id].location = my_star;
     }
     if (memory[spirit.id].task == "harvest") {
        harvest(memory[spirit.id].location);
