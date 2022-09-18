@@ -51,6 +51,9 @@ for(i=0;i<my_spirits.length;i++){
     if (memory[spirit.id].task == "deposit"){
         deposit();
     }
+    if (spirit.sight.enemies_beamable.length > 0){
+        spirit.energize(spirit.sight.enemies_beamable[0]);
+    }
     console.log(memory[spirit.id].location.id);
 }
 
