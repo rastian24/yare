@@ -17,7 +17,7 @@ function get_harvest_loc(){
     if (my_star.energy >= my_star.energy_capacity / 2){
         return my_star;
     }else{
-        return star_nua;
+        return star_p89;
     }
 }
 if (tick == 1) {
