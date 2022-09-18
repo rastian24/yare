@@ -13,6 +13,18 @@ function harvest(location) {
     }
 }
 
+function deposit(){
+    if (spirit.energy > spirit.energy_capacity / 10){
+        spirit.move(my_base.position);
+        spirit.energize(my_base);
+    }
+    if (memory[spirit.id].task == "deposit" && spirit.energy <= spirit.energy_capacity / 10) {
+        memory[spirit.id].task = "harvest";
+        memory[spirit.id].location = get_harvest_loc();
+    }
+}
+
+
 function get_harvest_loc(){
     if (my_star.energy >= my_star.energy_capacity / 2){
         return my_star;
@@ -36,13 +48,8 @@ for(i=0;i<my_spirits.length;i++){
     if (memory[spirit.id].task == "harvest") {
        harvest(memory[spirit.id].location);
     }
-    if (memory[spirit.id].task == "deposit" && spirit.energy > spirit.energy_capacity / 10){
-        spirit.move(my_base.position);
-        spirit.energize(my_base);
-    }
-    if (memory[spirit.id].task == "deposit" && spirit.energy <= spirit.energy_capacity / 10) {
-       memory[spirit.id].task = "harvest";
-       memory[spirit.id].location = get_harvest_loc();
+    if (memory[spirit.id].task == "deposit"){
+        deposit();
     }
     console.log(memory[spirit.id].location.id);
 }
