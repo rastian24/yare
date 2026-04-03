@@ -76,7 +76,8 @@ object PyramidEngine {
             else card.copy(selected = false)
         }
         // If waste top was removed, update waste too
-        val newWaste = if (state.wasteTop != null && state.wasteTop.id in ids)
+        val wasteTop = state.wasteTop
+        val newWaste = if (wasteTop != null && wasteTop.id in ids)
             state.waste.dropLast(1)
         else
             state.waste.map { if (it.id in ids) it.copy(removed = true) else it }
