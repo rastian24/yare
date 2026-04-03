@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="table_green">#1B5E20</color>
+    <color name="card_face">#FAFAFA</color>
+    <color name="card_back">#1A237E</color>
+    <color name="card_selected">#FFD700</color>
+    <color name="card_low">#4CAF50</color>
+    <color name="card_mid">#2196F3</color>
+    <color name="card_high">#F44336</color>
+    <color name="text_dark">#212121</color>
+    <color name="text_light">#FFFFFF</color>
+    <color name="accent_gold">#FFD700</color>
+</resources>

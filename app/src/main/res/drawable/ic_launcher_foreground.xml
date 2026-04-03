@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Card shape -->
+    <path
+        android:fillColor="#FAFAFA"
+        android:pathData="M20,15 L88,15 Q93,15 93,20 L93,88 Q93,93 88,93 L20,93 Q15,93 15,88 L15,20 Q15,15 20,15 Z" />
+    <!-- Number 13 -->
+    <path
+        android:fillColor="#F44336"
+        android:pathData="M38,35 L46,35 L46,73 L38,73 Z" />
+    <path
+        android:fillColor="#F44336"
+        android:pathData="M54,35 L70,35 Q76,35 76,41 L76,51 Q76,54 73,56 Q76,58 76,62 L76,67 Q76,73 70,73 L54,73 Z" />
+    <path
+        android:fillColor="#FAFAFA"
+        android:pathData="M62,42 L68,42 L68,51 L62,51 Z" />
+    <path
+        android:fillColor="#FAFAFA"
+        android:pathData="M62,58 L68,58 L68,66 L62,66 Z" />
+</vector>

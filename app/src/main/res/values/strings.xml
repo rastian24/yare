@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Math Solitaire</string>
+    <string name="menu_play">Jugar</string>
+    <string name="menu_levels">Niveles</string>
+    <string name="game_target">Objetivo: %d</string>
+    <string name="game_score">Puntos: %d</string>
+    <string name="game_moves">Movimientos: %d</string>
+    <string name="game_won_title">¡Ganaste!</string>
+    <string name="game_lost_title">Sin movimientos</string>
+    <string name="game_won_message">Nivel completado con %d puntos</string>
+    <string name="game_lost_message">No quedan movimientos válidos</string>
+    <string name="btn_next_level">Siguiente nivel</string>
+    <string name="btn_restart">Reintentar</string>
+    <string name="btn_menu">Menú</string>
+    <string name="btn_hint">Pista</string>
+    <string name="stock_empty">Sin cartas</string>
+    <string name="level_locked">Bloqueado</string>
+</resources>
