@@ -19,6 +19,12 @@ import {
   type Punto,
   type Tramo,
 } from '@/dominio/tipos'
+import {
+  mismaSuperficie,
+  remedirAmbiente,
+  superficiesDeAmbientes,
+} from '@/dominio/calculo/ambientes'
+import { escalaDe, puntoEnPoligono } from '@/dominio/calculo/longitudes'
 import { listaPreciosPorDefecto } from '@/dominio/computo/presupuesto'
 import { guardarProyecto } from '@/persistencia/db'
 
@@ -33,6 +39,8 @@ export interface EstadoApp {
   seleccion: string[]
   /** Puntos del tramo que se está dibujando. */
   tramoEnCurso: Punto[]
+  /** Vértices del ambiente que se está delimitando. */
+  poligonoEnCurso: Punto[]
   ortogonal: boolean
   snapActivo: boolean
   /** Capas del DXF ocultas por el usuario. */
@@ -69,9 +77,19 @@ export interface EstadoApp {
   borrarCircuito: (id: string) => void
   asignarACircuito: (elementoIds: string[], circuitoId: string | null) => void
 
+  iniciarPoligono: (p: Punto) => void
+  agregarPuntoPoligono: (p: Punto) => void
+  deshacerPuntoPoligono: () => void
+  cancelarPoligono: () => void
+
   setAmbientes: (ambientes: Ambiente[]) => void
+  agregarAmbiente: (ambiente: Ambiente) => void
   actualizarAmbiente: (id: string, cambios: Partial<Ambiente>) => void
   borrarAmbiente: (id: string) => void
+  /** Vuelve a medir con la escala vigente los ambientes delimitados en el plano. */
+  remedirAmbientes: () => void
+  /** Fuerza las superficies del inmueble a la suma de los ambientes. */
+  sincronizarSuperficies: () => void
 }
 
 export function proyectoVacio(): Proyecto {
@@ -104,6 +122,28 @@ function guardarDiferido(proyecto: Proyecto): void {
   }, 600)
 }
 
+/**
+ * ¿Las superficies declaradas del inmueble vienen de sumar los ambientes?
+ *
+ * Mientras coincidan con la suma, se mantienen derivadas: delimitar un ambiente
+ * más actualiza el total y con él el grado de electrificación. En cuanto el
+ * usuario escribe un número propio dejan de coincidir, y entonces no se pisa:
+ * PanelInmueble ofrece sincronizar cuando corresponda.
+ */
+function superficiesEstabanDerivadas(proyecto: Proyecto): boolean {
+  const suma = superficiesDeAmbientes(proyecto.inmueble.ambientes)
+  return (
+    mismaSuperficie(proyecto.inmueble.superficieCubiertaM2, suma.cubiertaM2) &&
+    mismaSuperficie(proyecto.inmueble.superficieSemicubiertaM2, suma.semicubiertaM2)
+  )
+}
+
+function aplicarSuperficiesDeAmbientes(proyecto: Proyecto): void {
+  const suma = superficiesDeAmbientes(proyecto.inmueble.ambientes)
+  proyecto.inmueble.superficieCubiertaM2 = suma.cubiertaM2
+  proyecto.inmueble.superficieSemicubiertaM2 = suma.semicubiertaM2
+}
+
 export const useApp = create<EstadoApp>((set, get) => ({
   proyecto: proyectoVacio(),
   herramienta: 'seleccionar',
@@ -111,12 +151,14 @@ export const useApp = create<EstadoApp>((set, get) => ({
   circuitoActivo: null,
   seleccion: [],
   tramoEnCurso: [],
+  poligonoEnCurso: [],
   ortogonal: true,
   snapActivo: true,
   capasOcultas: new Set(),
   guardando: false,
 
-  reemplazarProyecto: (p) => set({ proyecto: p, seleccion: [], tramoEnCurso: [] }),
+  reemplazarProyecto: (p) =>
+    set({ proyecto: p, seleccion: [], tramoEnCurso: [], poligonoEnCurso: [] }),
 
   actualizar: (fn) =>
     set((estado) => {
@@ -128,7 +170,7 @@ export const useApp = create<EstadoApp>((set, get) => ({
       return { proyecto }
     }),
 
-  setHerramienta: (herramienta) => set({ herramienta, tramoEnCurso: [] }),
+  setHerramienta: (herramienta) => set({ herramienta, tramoEnCurso: [], poligonoEnCurso: [] }),
   setSimboloActivo: (simboloActivo) =>
     set({ simboloActivo, herramienta: simboloActivo ? 'colocar' : 'seleccionar' }),
   setCircuitoActivo: (circuitoActivo) => set({ circuitoActivo }),
@@ -226,33 +268,78 @@ export const useApp = create<EstadoApp>((set, get) => ({
       }
     }),
 
+  iniciarPoligono: (p) => set({ poligonoEnCurso: [p], herramienta: 'ambiente' }),
+  agregarPuntoPoligono: (p) => set((e) => ({ poligonoEnCurso: [...e.poligonoEnCurso, p] })),
+  deshacerPuntoPoligono: () => set((e) => ({ poligonoEnCurso: e.poligonoEnCurso.slice(0, -1) })),
+  cancelarPoligono: () => set({ poligonoEnCurso: [] }),
+
   setAmbientes: (ambientes) =>
     get().actualizar((p) => {
+      // Reemplazo completo: es la confirmación de la detección sobre el CAD, así
+      // que las superficies del inmueble pasan a ser las de esos ambientes.
       p.inmueble.ambientes = ambientes
-      // La superficie cubierta se deriva de los ambientes detectados, salvo los
-      // semicubiertos, que computan al 50 % por separado (770.7.3).
-      const cubierta = ambientes
-        .filter((a) => a.tipo !== 'semicubierto')
-        .reduce((s, a) => s + a.superficieM2, 0)
-      const semicubierta = ambientes
-        .filter((a) => a.tipo === 'semicubierto')
-        .reduce((s, a) => s + a.superficieM2, 0)
+      aplicarSuperficiesDeAmbientes(p)
+    }),
 
-      p.inmueble.superficieCubiertaM2 = Number(cubierta.toFixed(2))
-      p.inmueble.superficieSemicubiertaM2 = Number(semicubierta.toFixed(2))
+  agregarAmbiente: (ambiente) =>
+    get().actualizar((p) => {
+      const derivadas = superficiesEstabanDerivadas(p)
+      p.inmueble.ambientes.push(ambiente)
+      if (derivadas) aplicarSuperficiesDeAmbientes(p)
+
+      // Las bocas que ya estaban dentro del contorno pasan a contar para los
+      // mínimos de la Tabla 770.7.III. Sólo las que no tenían ambiente: un
+      // contorno nuevo no le roba bocas a uno existente.
+      if (!ambiente.poligono) return
+      for (const el of p.elementos) {
+        if (el.ambienteId) continue
+        if (puntoEnPoligono(el.posicion, ambiente.poligono)) el.ambienteId = ambiente.id
+      }
     }),
 
   actualizarAmbiente: (id, cambios) =>
     get().actualizar((p) => {
       const a = p.inmueble.ambientes.find((x) => x.id === id)
-      if (a) Object.assign(a, cambios)
+      if (!a) return
+
+      const derivadas = superficiesEstabanDerivadas(p)
+      Object.assign(a, cambios)
+      if (derivadas) aplicarSuperficiesDeAmbientes(p)
     }),
 
   borrarAmbiente: (id) =>
     get().actualizar((p) => {
+      const derivadas = superficiesEstabanDerivadas(p)
       p.inmueble.ambientes = p.inmueble.ambientes.filter((a) => a.id !== id)
+      if (derivadas) aplicarSuperficiesDeAmbientes(p)
+
       for (const el of p.elementos) {
         if (el.ambienteId === id) el.ambienteId = undefined
       }
     }),
+
+  remedirAmbientes: () =>
+    get().actualizar((p) => {
+      const plano = p.planos[0]
+      if (!plano) return
+
+      const escala = escalaDe(plano)
+      if (!escala.calibrado) return
+
+      const derivadas = superficiesEstabanDerivadas(p)
+
+      // Se copian los campos medidos en lugar de reemplazar el objeto: el
+      // borrador de immer no debe recibir de vuelta un ambiente armado a partir
+      // de él mismo.
+      for (const a of p.inmueble.ambientes) {
+        const medido = remedirAmbiente(a, escala)
+        a.superficieM2 = medido.superficieM2
+        if (medido.longitudM === undefined) delete a.longitudM
+        else a.longitudM = medido.longitudM
+      }
+
+      if (derivadas) aplicarSuperficiesDeAmbientes(p)
+    }),
+
+  sincronizarSuperficies: () => get().actualizar(aplicarSuperficiesDeAmbientes),
 }))

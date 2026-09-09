@@ -3,35 +3,41 @@
 import { useApp, nuevoId } from '@/estado/store'
 import { useCalculo } from '@/estado/useCalculo'
 import { nombreGrado } from '@/normativa/aea770/electrificacion'
+import { midePorLongitud, mismaSuperficie, superficiesDeAmbientes } from '@/dominio/calculo/ambientes'
 import { amp, kva, m2 } from '@/dominio/formato'
+import { TIPOS_AMBIENTE } from './tiposAmbiente'
 import type { Ambiente, TipoAmbiente } from '@/dominio/tipos'
 
-const TIPOS: Array<{ valor: TipoAmbiente; etiqueta: string }> = [
-  { valor: 'estar', etiqueta: 'Estar / comedor / escritorio' },
-  { valor: 'dormitorio', etiqueta: 'Dormitorio' },
-  { valor: 'cocina', etiqueta: 'Cocina' },
-  { valor: 'bano', etiqueta: 'Baño' },
-  { valor: 'toilette', etiqueta: 'Toilette' },
-  { valor: 'lavadero', etiqueta: 'Lavadero' },
-  { valor: 'vestibulo', etiqueta: 'Vestíbulo / garaje / hall' },
-  { valor: 'pasillo', etiqueta: 'Pasillo cubierto' },
-  { valor: 'semicubierto', etiqueta: 'Balcón / galería / semicubierto' },
-]
-
 export function PanelInmueble() {
-  const { proyecto, actualizar, actualizarAmbiente, borrarAmbiente } = useApp()
+  const {
+    proyecto,
+    actualizar,
+    agregarAmbiente,
+    actualizarAmbiente,
+    borrarAmbiente,
+    sincronizarSuperficies,
+  } = useApp()
   const { calculado } = useCalculo()
   const { suministro, inmueble } = proyecto
 
-  const agregarAmbiente = () =>
-    actualizar((p) =>
-      void p.inmueble.ambientes.push({
-        id: nuevoId('amb'),
-        nombre: 'Nuevo ambiente',
-        tipo: 'estar',
-        superficieM2: 12,
-      }),
-    )
+  // Las superficies declaradas se mantienen solas mientras salgan de los
+  // ambientes; si el usuario escribió las suyas se avisa la diferencia en lugar
+  // de pisárselas, porque de este número sale el grado de electrificación.
+  const suma = superficiesDeAmbientes(inmueble.ambientes)
+  const difieren =
+    inmueble.ambientes.length > 0 &&
+    (!mismaSuperficie(inmueble.superficieCubiertaM2, suma.cubiertaM2) ||
+      !mismaSuperficie(inmueble.superficieSemicubiertaM2, suma.semicubiertaM2))
+
+  // Ambiente cargado a mano: sin contorno y con una superficie a completar. El
+  // camino que da números reales es delimitarlo sobre el plano.
+  const agregarManual = () =>
+    agregarAmbiente({
+      id: nuevoId('amb'),
+      nombre: 'Nuevo ambiente',
+      tipo: 'estar',
+      superficieM2: 12,
+    })
 
   return (
     <div className="space-y-5 p-3">
@@ -56,6 +62,21 @@ export function PanelInmueble() {
             ayuda="Balcones, galerías, porches: computan al 50 % (770.7.3)"
           />
         </div>
+
+        {difieren && (
+          <div className="mb-3 rounded bg-amber-50 px-2 py-1.5 text-xs text-amber-900">
+            Los ambientes suman {m2(suma.cubiertaM2)} cubiertos
+            {suma.semicubiertaM2 > 0 && ` y ${m2(suma.semicubiertaM2)} semicubiertos`}, distinto de
+            lo declarado arriba.{' '}
+            <button
+              type="button"
+              onClick={sincronizarSuperficies}
+              className="font-medium underline hover:no-underline"
+            >
+              Usar la suma de los ambientes
+            </button>
+          </div>
+        )}
 
         <p className="text-2xl font-semibold text-slate-800">{nombreGrado(calculado.grado)}</p>
         <p className="mt-1 text-xs text-slate-600">
@@ -161,7 +182,7 @@ export function PanelInmueble() {
           </h3>
           <button
             type="button"
-            onClick={agregarAmbiente}
+            onClick={agregarManual}
             className="rounded border border-slate-300 px-2 py-0.5 text-xs hover:bg-slate-50"
           >
             + Agregar
@@ -170,7 +191,8 @@ export function PanelInmueble() {
 
         {inmueble.ambientes.length === 0 && (
           <p className="text-xs text-slate-500">
-            Cargá los ambientes a mano, o importá un DXF para detectarlos automáticamente.
+            Delimitalos en el plano con la herramienta <strong>Ambiente</strong> y la superficie sale
+            medida, cargalos a mano acá, o importá un DXF para detectarlos automáticamente.
           </p>
         )}
 
@@ -201,7 +223,8 @@ function FilaAmbiente({
   onCambio: (cambios: Partial<Ambiente>) => void
   onBorrar: () => void
 }) {
-  const porLongitud = ambiente.tipo === 'pasillo' || ambiente.tipo === 'semicubierto'
+  const porLongitud = midePorLongitud(ambiente.tipo)
+  const delimitado = (ambiente.poligono?.length ?? 0) >= 3
 
   return (
     <div className="rounded border border-slate-200 p-2">
@@ -211,6 +234,14 @@ function FilaAmbiente({
           onChange={(e) => onCambio({ nombre: e.target.value })}
           className="min-w-0 flex-1 rounded border border-transparent px-1 text-sm hover:border-slate-300 focus:border-sky-400 focus:outline-none"
         />
+        {delimitado && (
+          <span
+            title={`Delimitado en el plano: ${m2(ambiente.superficieM2)} medidos sobre ${ambiente.poligono?.length} vértices`}
+            className="shrink-0 rounded bg-emerald-50 px-1 text-[10px] text-emerald-700"
+          >
+            medido
+          </span>
+        )}
         <button
           type="button"
           onClick={onBorrar}
@@ -226,7 +257,7 @@ function FilaAmbiente({
           onChange={(e) => onCambio({ tipo: e.target.value as TipoAmbiente })}
           className="rounded border border-slate-300 px-1 py-0.5"
         >
-          {TIPOS.map((t) => (
+          {TIPOS_AMBIENTE.map((t) => (
             <option key={t.valor} value={t.valor}>
               {t.etiqueta}
             </option>

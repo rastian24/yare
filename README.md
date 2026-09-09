@@ -15,7 +15,7 @@ lado. Los proyectos se guardan en IndexedDB.
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm test           # 127 tests
+npm test           # 150 tests
 npm run build
 ```
 
@@ -32,6 +32,15 @@ apagar para dejar sólo los muros— y la geometría con los bloques ya resuelto
 Sobre eso hay enganche a extremos, puntos medios, intersecciones y
 perpendiculares, y detección asistida de ambientes: las polilíneas cerradas dan
 la superficie por la fórmula de Gauss y los textos de adentro dan el nombre.
+
+**Ambientes.** Cuando el plano no trae los locales como polilíneas cerradas
+—una foto siempre, un DXF a veces— se delimitan a mano: se marcan los vértices
+del área y la aplicación devuelve la superficie, el perímetro y, en pasillos y
+semicubiertos, la longitud. La medida sale de las unidades del CAD o de la
+calibración, con el mismo criterio que las longitudes: sin escala la herramienta
+queda bloqueada, en vez de dar una superficie inventada. El contorno queda
+guardado, así que las bocas que caen adentro se asignan solas al ambiente y una
+recalibración vuelve a medir lo ya dibujado.
 
 Cuando el archivo no declara unidades, la aplicación no adivina: propone la más
 plausible por el tamaño del dibujo y pide confirmación. También avisa si la
@@ -71,7 +80,7 @@ embebido nace viejo.
 ```
 src/
   dominio/          tipos y lógica pura, sin React
-    calculo/        corriente, sección, caída de tensión, cañerías, longitudes
+    calculo/        corriente, sección, caída de tensión, cañerías, longitudes, superficies
     computo/        materiales, presupuesto
   normativa/aea770/
     tablas.ts       las tablas de la norma como datos, cada una con su cláusula
