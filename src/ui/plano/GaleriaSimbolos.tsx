@@ -23,6 +23,26 @@ export function GaleriaSimbolos() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Sin esto no se ve a qué circuito va a parar la boca que se coloque, y
+          una boca sin circuito no computa cable ni tiene protección. */}
+      <p
+        className={[
+          'rounded px-2 py-1.5 text-xs',
+          circuito ? 'bg-sky-50 text-sky-900' : 'bg-amber-50 text-amber-900',
+        ].join(' ')}
+      >
+        {circuito ? (
+          <>
+            Las bocas se asignan a <strong>{circuito.nombre}</strong>.
+          </>
+        ) : (
+          <>
+            No hay circuito activo: las bocas quedan sin asignar. Elegí uno en la pestaña
+            Circuitos.
+          </>
+        )}
+      </p>
+
       {ORDEN.map((categoria) => {
         const simbolos = SIMBOLOS.filter((s) => s.categoria === categoria)
         if (simbolos.length === 0) return null

@@ -3,6 +3,7 @@
 import { useApp, nuevoId } from '@/estado/store'
 import { useCalculo } from '@/estado/useCalculo'
 import { nombreGrado } from '@/normativa/aea770/electrificacion'
+import { amp, kva, m2 } from '@/dominio/formato'
 import type { Ambiente, TipoAmbiente } from '@/dominio/tipos'
 
 const TIPOS: Array<{ valor: TipoAmbiente; etiqueta: string }> = [
@@ -41,13 +42,12 @@ export function PanelInmueble() {
         </h3>
         <p className="text-2xl font-semibold text-slate-800">{nombreGrado(calculado.grado)}</p>
         <p className="mt-1 text-xs text-slate-600">
-          {calculado.superficieM2.toFixed(1)} m² de límite de aplicación (cubierta más el 50 % de la
+          {m2(calculado.superficieM2, 1)} de límite de aplicación (cubierta más el 50 % de la
           semicubierta, 770.7.3). Exige {calculado.minimoCircuitos.totalRequerido} circuitos como
           mínimo.
         </p>
         <p className="mt-2 text-xs text-slate-600">
-          Carga total: <strong>{(calculado.cargaTotalVA / 1000).toFixed(2)} kVA</strong> ·{' '}
-          {calculado.corrienteTotalA.toFixed(1)} A · simultaneidad {calculado.coefSimultaneidad}
+          Carga total: <strong>{kva(calculado.cargaTotalVA)}</strong> · {amp(calculado.corrienteTotalA)} · simultaneidad {calculado.coefSimultaneidad}
         </p>
       </section>
 

@@ -13,6 +13,7 @@ import { useCalculo } from '@/estado/useCalculo'
 import { buscarSimbolo } from '@/simbologia/catalogo'
 import { IndiceEspacial, forzarOrtogonal, type Snap } from '@/cad/snapping'
 import { escalaDe, longitudPolilinea } from '@/dominio/calculo/longitudes'
+import { metros as fmtMetros } from '@/dominio/formato'
 import { urlDeBlob } from '@/persistencia/db'
 import { nuevoId } from '@/estado/store'
 import { severidadMaxima } from '@/normativa/aea770/motor'
@@ -392,7 +393,7 @@ export function EditorPlano() {
                   fill={color}
                   className="select-none"
                 >
-                  {t.longitudM.toFixed(2)} m
+                  {fmtMetros(t.longitudM)}
                   {t.caneria ? ` · ${t.caneria.cano.designacion}` : ''}
                 </text>
               )}
@@ -522,7 +523,7 @@ function BarraEstado({
         </span>
       )}
       {snap && <span className="text-emerald-700">Enganche: {snap.tipo}</span>}
-      {longitud !== null && <span>Tramo: {longitud.toFixed(2)} m</span>}
+      {longitud !== null && <span>Tramo: {fmtMetros(longitud)}</span>}
       <span className="ml-auto text-slate-400">
         Rueda: zoom · Alt+arrastrar: desplazar · Doble clic o Enter: cerrar tramo · Esc: cancelar
       </span>

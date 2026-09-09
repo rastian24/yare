@@ -4,6 +4,7 @@ import { useApp, nuevoId } from '@/estado/store'
 import { useCalculo } from '@/estado/useCalculo'
 import { SECCIONES_COMERCIALES, TIPOS_CIRCUITO, CALIBRES_PROTECCION } from '@/normativa/aea770/tablas'
 import { severidadMaxima } from '@/normativa/aea770/motor'
+import { amp, metros, mm2, pct, va } from '@/dominio/formato'
 import type { TipoCircuito } from '@/dominio/tipos'
 
 const COLOR: Record<TipoCircuito, string> = {
@@ -86,7 +87,12 @@ export function PanelCircuitos() {
                   onChange={(e) =>
                     actualizarCircuito(c.circuito.id, { nombre: e.target.value })
                   }
+                  // El clic no debe alternar la fila (si no, editar el nombre
+                  // deselecciona el circuito), pero enfocar el campo sí lo
+                  // selecciona: si alguien va a escribir acá, está trabajando
+                  // sobre ese circuito.
                   onClick={(e) => e.stopPropagation()}
+                  onFocus={() => setCircuitoActivo(c.circuito.id)}
                   className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-1 text-sm font-medium hover:border-slate-300 focus:border-sky-400 focus:outline-none"
                 />
 
@@ -127,7 +133,7 @@ export function PanelCircuitos() {
                     >
                       {SECCIONES_COMERCIALES.filter((s) => s >= 1 && s <= 25).map((s) => (
                         <option key={s} value={s}>
-                          {s} mm²
+                          {mm2(s)}
                         </option>
                       ))}
                     </select>
@@ -159,25 +165,25 @@ export function PanelCircuitos() {
 
               <dl className="mt-1.5 grid grid-cols-4 gap-x-2 text-[11px] text-slate-600">
                 <Dato etiqueta="Bocas" valor={`${c.bocas}/${c.maxBocas}`} />
-                <Dato etiqueta="DPMS" valor={`${c.dpmsVA.toFixed(0)} VA`} />
-                <Dato etiqueta="Ib" valor={`${c.ibA.toFixed(1)} A`} />
+                <Dato etiqueta="DPMS" valor={va(c.dpmsVA)} />
+                <Dato etiqueta="Ib" valor={amp(c.ibA)} />
                 <Dato
                   etiqueta="Iz"
-                  valor={`${c.izA.toFixed(1)} A`}
+                  valor={amp(c.izA)}
                   nota={c.factorAgrupamiento < 1 ? `×${c.factorAgrupamiento}` : undefined}
                 />
                 <Dato
                   etiqueta="Longitud"
-                  valor={c.longitudM !== null ? `${c.longitudM.toFixed(1)} m` : '—'}
+                  valor={c.longitudM !== null ? metros(c.longitudM, 1) : '—'}
                 />
                 <Dato
                   etiqueta="ΔU"
-                  valor={c.caidaPct !== null ? `${c.caidaPct.toFixed(2)} %` : '—'}
+                  valor={c.caidaPct !== null ? pct(c.caidaPct) : '—'}
                   alerta={
                     c.caidaPct !== null && c.caidaPct > proyecto.suministro.caidaTensionMaxPct
                   }
                 />
-                <Dato etiqueta="PE" valor={`${c.seccionPEMm2} mm²`} />
+                <Dato etiqueta="PE" valor={mm2(c.seccionPEMm2)} />
                 {c.circuito.tipo === 'IUG' && (
                   <label
                     className="col-span-1 flex items-center gap-1"

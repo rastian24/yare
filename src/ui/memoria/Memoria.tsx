@@ -12,6 +12,7 @@ import { useApp } from '@/estado/store'
 import { useCalculo } from '@/estado/useCalculo'
 import { nombreGrado } from '@/normativa/aea770/electrificacion'
 import { buscarSimbolo } from '@/simbologia/catalogo'
+import { amp, kva, m2, metros, mm2, pct, va } from '@/dominio/formato'
 
 export function Memoria() {
   const { proyecto, actualizar } = useApp()
@@ -58,7 +59,7 @@ export function Memoria() {
           <dl className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm sm:grid-cols-3">
             <Dato
               etiqueta="Superficie (límite de aplicación)"
-              valor={`${calculado.superficieM2.toFixed(1)} m²`}
+              valor={m2(calculado.superficieM2, 1)}
               nota="770.7.3"
             />
             <Dato etiqueta="Grado de electrificación" valor={nombreGrado(calculado.grado)} nota="770.7.I" />
@@ -69,7 +70,7 @@ export function Memoria() {
             />
             <Dato
               etiqueta="DPMS"
-              valor={`${(calculado.dpmsTotalVA / 1000).toFixed(2)} kVA`}
+              valor={kva(calculado.dpmsTotalVA)}
               nota="770.8.I"
             />
             <Dato
@@ -79,12 +80,12 @@ export function Memoria() {
             />
             <Dato
               etiqueta="Carga total"
-              valor={`${(calculado.cargaTotalVA / 1000).toFixed(2)} kVA`}
+              valor={kva(calculado.cargaTotalVA)}
               nota="770.8.3.1"
             />
             <Dato
               etiqueta="Corriente de línea"
-              valor={`${calculado.corrienteTotalA.toFixed(1)} A`}
+              valor={amp(calculado.corrienteTotalA)}
             />
             <Dato
               etiqueta="Suministro"
@@ -144,18 +145,18 @@ export function Memoria() {
                   <td className="py-1.5">{c.circuito.nombre}</td>
                   <td className="py-1.5 text-slate-600">{c.circuito.tipo}</td>
                   <td className="py-1.5 text-right tabular-nums">{c.bocas}</td>
-                  <td className="py-1.5 text-right tabular-nums">{c.dpmsVA.toFixed(0)} VA</td>
-                  <td className="py-1.5 text-right tabular-nums">{c.ibA.toFixed(1)} A</td>
-                  <td className="py-1.5 text-right tabular-nums">{c.circuito.seccionMm2} mm²</td>
-                  <td className="py-1.5 text-right tabular-nums">{c.izA.toFixed(1)} A</td>
+                  <td className="py-1.5 text-right tabular-nums">{va(c.dpmsVA)}</td>
+                  <td className="py-1.5 text-right tabular-nums">{amp(c.ibA)}</td>
+                  <td className="py-1.5 text-right tabular-nums">{mm2(c.circuito.seccionMm2)}</td>
+                  <td className="py-1.5 text-right tabular-nums">{amp(c.izA)}</td>
                   <td className="py-1.5 text-right tabular-nums">{c.circuito.proteccionIn} A</td>
                   <td className="py-1.5 text-right tabular-nums">
-                    {c.longitudM !== null ? `${c.longitudM.toFixed(1)} m` : '—'}
+                    {c.longitudM !== null ? metros(c.longitudM, 1) : '—'}
                   </td>
                   <td className="py-1.5 text-right tabular-nums">
-                    {c.caidaPct !== null ? `${c.caidaPct.toFixed(2)} %` : '—'}
+                    {c.caidaPct !== null ? pct(c.caidaPct) : '—'}
                   </td>
-                  <td className="py-1.5 text-right tabular-nums">{c.seccionPEMm2} mm²</td>
+                  <td className="py-1.5 text-right tabular-nums">{mm2(c.seccionPEMm2)}</td>
                 </tr>
               ))}
             </tbody>
@@ -187,8 +188,8 @@ export function Memoria() {
                     <td className="py-1.5 text-slate-600">{ambiente.tipo}</td>
                     <td className="py-1.5 text-right tabular-nums">
                       {ambiente.longitudM !== undefined
-                        ? `${ambiente.longitudM} m`
-                        : `${ambiente.superficieM2} m²`}
+                        ? metros(ambiente.longitudM)
+                        : m2(ambiente.superficieM2)}
                     </td>
                     <td className="py-1.5 text-right tabular-nums">{iug}</td>
                     <td className="py-1.5 text-right tabular-nums">{tug}</td>

@@ -14,6 +14,7 @@ export type Regla = (p: ProyectoCalculado) => Hallazgo[]
 export { minimoCircuitos } from './minimoCircuitos'
 export { puntosMinimos } from './puntosMinimos'
 export { bocasPorCircuito } from './bocasPorCircuito'
+export { bocasSinCircuito } from './bocasSinCircuito'
 export { seccionMinima } from './seccionMinima'
 export { corrienteAdmisible } from './corrienteAdmisible'
 export { caidaTension } from './caidaTension'

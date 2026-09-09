@@ -13,6 +13,7 @@
 
 import { useCalculo } from '@/estado/useCalculo'
 import { seccionPAT } from '@/dominio/calculo/electrico'
+import { amp, mm2, pct, va } from '@/dominio/formato'
 import type { TipoCircuito } from '@/dominio/tipos'
 
 const COLOR: Record<TipoCircuito, string> = {
@@ -77,7 +78,7 @@ export function Unifilar() {
         <line x1={139} y1={52} x2={250} y2={52} stroke="#334155" strokeWidth={2} />
         {/* El rótulo va debajo de la línea: arriba chocaría con el medidor. */}
         <text x={196} y={70} textAnchor="middle" fontSize={10} fill="#64748b">
-          Línea principal {seccionPrincipal} mm²
+          Línea principal {mm2(seccionPrincipal)}
         </text>
 
         {/* --- Seccionador de cabecera --- */}
@@ -160,7 +161,7 @@ export function Unifilar() {
                 <line x1={x - 6} y1={Y_BARRA + 86} x2={x + 6} y2={Y_BARRA + 80} />
               </g>
               <text x={x + 10} y={Y_BARRA + 86} fontSize={10} fill="#475569">
-                {c.circuito.seccionMm2} mm²
+                {mm2(c.circuito.seccionMm2)}
               </text>
 
               {/* Rótulo del circuito */}
@@ -175,10 +176,10 @@ export function Unifilar() {
                 {c.circuito.nombre}
               </text>
               <text x={x} y={Y_BARRA + 144} textAnchor="middle" fontSize={10} fill="#64748b">
-                {c.bocas} bocas · {c.dpmsVA.toFixed(0)} VA
+                {c.bocas} bocas · {va(c.dpmsVA)}
               </text>
               <text x={x} y={Y_BARRA + 158} textAnchor="middle" fontSize={10} fill="#64748b">
-                Ib {c.ibA.toFixed(1)} A · Iz {c.izA.toFixed(1)} A
+                Ib {amp(c.ibA)} · Iz {amp(c.izA)}
               </text>
               <text
                 x={x}
@@ -188,10 +189,10 @@ export function Unifilar() {
                 fill={excedeCaida ? '#dc2626' : '#64748b'}
                 fontWeight={excedeCaida ? 600 : 400}
               >
-                ΔU {c.caidaPct !== null ? `${c.caidaPct.toFixed(2)} %` : '—'}
+                ΔU {c.caidaPct !== null ? pct(c.caidaPct) : '—'}
               </text>
               <text x={x} y={Y_BARRA + 186} textAnchor="middle" fontSize={10} fill="#16a34a">
-                PE {c.seccionPEMm2} mm²
+                PE {mm2(c.seccionPEMm2)}
               </text>
             </g>
           )
@@ -204,7 +205,7 @@ export function Unifilar() {
           <line x1={-9} y1={26} x2={9} y2={26} stroke="#16a34a" strokeWidth={2} />
           <line x1={-4} y1={32} x2={4} y2={32} stroke="#16a34a" strokeWidth={2} />
           <text x={0} y={50} textAnchor="middle" fontSize={10} fill="#16a34a">
-            PAT {seccionPAT(seccionPrincipal)} mm²
+            PAT {mm2(seccionPAT(seccionPrincipal))}
           </text>
         </g>
       </svg>

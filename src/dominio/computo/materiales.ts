@@ -10,6 +10,7 @@ import { CANALIZACION } from '@/normativa/aea770/tablas'
 import { buscarCano } from '@/normativa/aea770/canerias'
 import { buscarSimbolo } from '@/simbologia/catalogo'
 import { seccionPAT } from '@/dominio/calculo/electrico'
+import { metros, mm2 } from '@/dominio/formato'
 import type { ProyectoCalculado } from '@/dominio/calculo/proyecto'
 
 export type CategoriaMaterial = 'cable' | 'cano' | 'caja' | 'modulo' | 'tablero' | 'pat'
@@ -77,34 +78,34 @@ export function computarMateriales(p: ProyectoCalculado): ItemMaterial[] {
   }
 
   for (const c of p.circuitos) {
-    const metros = metrosPorCircuito.get(c.circuito.id)
-    if (!metros) continue
+    const metrosDelCircuito = metrosPorCircuito.get(c.circuito.id)
+    if (!metrosDelCircuito) continue
 
     const s = c.circuito.seccionMm2
 
     sumar({
       id: `cable-vivo-${s}`,
-      descripcion: `Cable unipolar ${s} mm² ${COLOR_CONDUCTOR.vivo} (IRAM-NM 247-3)`,
+      descripcion: `Cable unipolar ${mm2(s)} ${COLOR_CONDUCTOR.vivo} (IRAM-NM 247-3)`,
       categoria: 'cable',
-      cantidad: metros * (conductoresPorCircuito - 1),
+      cantidad: metrosDelCircuito * (conductoresPorCircuito - 1),
       unidad: 'm',
       clausula: '770.10.2',
     })
 
     sumar({
       id: `cable-neutro-${s}`,
-      descripcion: `Cable unipolar ${s} mm² ${COLOR_CONDUCTOR.neutro} (IRAM-NM 247-3)`,
+      descripcion: `Cable unipolar ${mm2(s)} ${COLOR_CONDUCTOR.neutro} (IRAM-NM 247-3)`,
       categoria: 'cable',
-      cantidad: metros,
+      cantidad: metrosDelCircuito,
       unidad: 'm',
       clausula: '770.10.2',
     })
 
     sumar({
       id: `cable-pe-${c.seccionPEMm2}`,
-      descripcion: `Cable unipolar ${c.seccionPEMm2} mm² ${COLOR_CONDUCTOR.proteccion} (conductor de protección)`,
+      descripcion: `Cable unipolar ${mm2(c.seccionPEMm2)} ${COLOR_CONDUCTOR.proteccion} (conductor de protección)`,
       categoria: 'cable',
-      cantidad: metros,
+      cantidad: metrosDelCircuito,
       unidad: 'm',
       clausula: '770.14.4.5',
     })
@@ -120,9 +121,9 @@ export function computarMateriales(p: ProyectoCalculado): ItemMaterial[] {
     metrosPorCano.set(designacion, (metrosPorCano.get(designacion) ?? 0) + t.longitudM)
   }
 
-  for (const [designacion, metros] of metrosPorCano) {
+  for (const [designacion, metrosDelCano] of metrosPorCano) {
     const cano = buscarCano(designacion)
-    const barras = Math.ceil(metros / CANALIZACION.largoBarraM)
+    const barras = Math.ceil(metrosDelCano / CANALIZACION.largoBarraM)
 
     sumar({
       id: `cano-${designacion}`,
@@ -131,7 +132,7 @@ export function computarMateriales(p: ProyectoCalculado): ItemMaterial[] {
       cantidad: barras,
       unidad: 'barra',
       clausula: '770.10.3',
-      detalle: `${metros.toFixed(1)} m en barras de ${CANALIZACION.largoBarraM} m`,
+      detalle: `${metros(metrosDelCano)} en barras de ${CANALIZACION.largoBarraM} m`,
     })
   }
 
@@ -217,7 +218,7 @@ export function computarMateriales(p: ProyectoCalculado): ItemMaterial[] {
     const sPAT = seccionPAT(seccionMayor)
     sumar({
       id: `cable-pat-${sPAT}`,
-      descripcion: `Cable de puesta a tierra ${sPAT} mm² ${COLOR_CONDUCTOR.proteccion}`,
+      descripcion: `Cable de puesta a tierra ${mm2(sPAT)} ${COLOR_CONDUCTOR.proteccion}`,
       categoria: 'pat',
       cantidad: 10,
       unidad: 'm',

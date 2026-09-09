@@ -15,6 +15,7 @@ export const REGLAS: readonly Regla[] = [
   reglas.minimoCircuitos,
   reglas.puntosMinimos,
   reglas.bocasPorCircuito,
+  reglas.bocasSinCircuito,
   reglas.seccionMinima,
   reglas.corrienteAdmisible,
   reglas.caidaTension,
