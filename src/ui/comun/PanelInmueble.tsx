@@ -40,6 +40,23 @@ export function PanelInmueble() {
         <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
           Grado de electrificación
         </h3>
+
+        <div className="mb-3 grid grid-cols-2 gap-2 text-sm">
+          <Numero
+            etiqueta="Superficie cubierta (m²)"
+            valor={inmueble.superficieCubiertaM2}
+            paso={0.5}
+            onChange={(v) => actualizar((p) => void (p.inmueble.superficieCubiertaM2 = v))}
+          />
+          <Numero
+            etiqueta="Superficie semicubierta (m²)"
+            valor={inmueble.superficieSemicubiertaM2}
+            paso={0.5}
+            onChange={(v) => actualizar((p) => void (p.inmueble.superficieSemicubiertaM2 = v))}
+            ayuda="Balcones, galerías, porches: computan al 50 % (770.7.3)"
+          />
+        </div>
+
         <p className="text-2xl font-semibold text-slate-800">{nombreGrado(calculado.grado)}</p>
         <p className="mt-1 text-xs text-slate-600">
           {m2(calculado.superficieM2, 1)} de límite de aplicación (cubierta más el 50 % de la
