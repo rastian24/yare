@@ -8,6 +8,7 @@
  * lo informa, en lugar de arrojar un número inventado.
  */
 
+import { buscarSimbolo } from '@/simbologia/catalogo'
 import type {
   AlturasMontaje,
   Elemento,
@@ -117,6 +118,27 @@ export function alturaDeTramo(tramo: Tramo, alturas: AlturasMontaje): number {
 }
 
 /**
+ * Altura de montaje de un elemento, en metros.
+ *
+ * Prioridad: la altura propia del elemento si el usuario la fijó, si no la que
+ * define su símbolo (770.7.2 para tomacorrientes, altura de local para bocas de
+ * techo), y como último recurso la del tramo, que anula el aporte vertical.
+ */
+export function alturaDeElemento(
+  elemento: Elemento,
+  alturas: AlturasMontaje,
+  alturaPorDefecto: number,
+): number {
+  if (elemento.alturaM !== undefined) return elemento.alturaM
+
+  const simbolo = buscarSimbolo(elemento.simboloId)
+  if (!simbolo) return alturaPorDefecto
+  if (simbolo.altura === 'piso') return 0
+
+  return alturas[simbolo.altura]
+}
+
+/**
  * Longitud total de un tramo en metros: recorrido en planta más las bajadas y
  * subidas hasta cada elemento que vincula.
  *
@@ -146,8 +168,7 @@ export function longitudTramo(
   for (const id of tramo.elementoIds) {
     const el = porId.get(id)
     if (!el) continue
-    const alturaEl = el.alturaM ?? alturaTramo
-    verticalM += Math.abs(alturaEl - alturaTramo)
+    verticalM += Math.abs(alturaDeElemento(el, alturas, alturaTramo) - alturaTramo)
   }
 
   return { totalM: plantaM + verticalM, plantaM, verticalM }

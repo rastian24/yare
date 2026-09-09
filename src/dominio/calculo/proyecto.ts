@@ -68,6 +68,8 @@ export interface CircuitoCalculado {
   ibA: number
   /** Corriente admisible del cable, ya corregida por agrupamiento. */
   izA: number
+  /** Cantidad de circuitos que comparten canalización en el peor tramo. */
+  circuitosAgrupados: number
   factorAgrupamiento: number
   /** Calibre que cumple Ib ≤ In ≤ Iz, o `null` si ninguno entra. */
   proteccionSugeridaA: number | null
@@ -269,6 +271,7 @@ export function calcularProyecto(proyecto: Proyecto): ProyectoCalculado {
       dpmsVA,
       ibA,
       izA,
+      circuitosAgrupados: agrupados,
       factorAgrupamiento: factorAgrupamiento(agrupados, suministro.fases),
       proteccionSugeridaA,
       seccionPEMm2: seccionPE(circuito.seccionMm2),

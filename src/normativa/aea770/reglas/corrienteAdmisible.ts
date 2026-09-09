@@ -37,10 +37,12 @@ export function corrienteAdmisible(p: ProyectoCalculado): Hallazgo[] {
 
     // --- Ib ≤ Iz ------------------------------------------------------------
     if (c.ibA > c.izA) {
+      // La sección sugerida se busca con la MISMA cantidad de circuitos
+      // agrupados: si no, se propondría una sección que sólo alcanza aislada.
       const sugerida = seccionPorCorriente(
         c.ibA,
         fases,
-        Math.round(1 / c.factorAgrupamiento) || 1,
+        c.circuitosAgrupados,
         seccionMinimaDe(c.circuito),
       )
 
