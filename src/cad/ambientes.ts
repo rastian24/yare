@@ -12,6 +12,7 @@
  */
 
 import { areaPoligono, puntoEnPoligono } from '@/dominio/calculo/longitudes'
+import { ladoMayorEnvolvente, midePorLongitud } from '@/dominio/calculo/ambientes'
 import { METROS_POR_UNIDAD } from './unidades'
 import type { Ambiente, EntidadCAD, Punto, TipoAmbiente, UnidadDXF } from '@/dominio/tipos'
 
@@ -185,23 +186,11 @@ export function aAmbiente(
 
   // Pasillos y semicubiertos se miden por longitud, no por superficie
   // (Tabla 770.7.III: "una boca por cada 5 m de longitud o fracción").
-  if (tipoFinal === 'pasillo' || tipoFinal === 'semicubierto') {
+  if (midePorLongitud(tipoFinal)) {
     ambiente.longitudM = Number(longitudEnMetros(detectado.poligono, unidades).toFixed(2))
   }
 
   return ambiente
-}
-
-/**
- * Lado mayor del rectángulo que envuelve al polígono. Para un pasillo, que es
- * un rectángulo alargado, aproxima bien su longitud.
- */
-function longitudMayor(poligono: Punto[]): number {
-  if (poligono.length === 0) return 0
-
-  const xs = poligono.map((p) => p.x)
-  const ys = poligono.map((p) => p.y)
-  return Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys))
 }
 
 /**
@@ -210,5 +199,5 @@ function longitudMayor(poligono: Punto[]): number {
  */
 export function longitudEnMetros(poligono: Punto[], unidades: UnidadDXF): number {
   if (unidades === 'sin_definir') return 0
-  return longitudMayor(poligono) * METROS_POR_UNIDAD[unidades]
+  return ladoMayorEnvolvente(poligono) * METROS_POR_UNIDAD[unidades]
 }

@@ -178,23 +178,40 @@ export function App() {
                   ['seleccionar', 'Seleccionar'],
                   ['colocar', 'Colocar'],
                   ['tramo', 'Cañería'],
+                  ['ambiente', 'Ambiente'],
                   ['calibrar', 'Calibrar'],
                 ] as const
-              ).map(([id, etiqueta]) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setHerramienta(id)}
-                  className={[
-                    'rounded px-2 py-1 text-xs transition',
-                    herramienta === id
-                      ? 'bg-sky-600 text-white'
-                      : 'text-slate-600 hover:bg-slate-100',
-                  ].join(' ')}
-                >
-                  {etiqueta}
-                </button>
-              ))}
+              ).map(([id, etiqueta]) => {
+                // Delimitar sin escala daría una superficie inventada, y de la
+                // superficie cuelga el grado de electrificación (770.7.3).
+                const sinEscala = id === 'ambiente' && !calculado.escala?.calibrado
+
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    disabled={sinEscala}
+                    title={
+                      sinEscala
+                        ? 'Calibrá el plano, o cargá un DXF con unidades, para poder medir superficies'
+                        : id === 'ambiente'
+                          ? 'Marcar los vértices de un ambiente y medir su superficie'
+                          : undefined
+                    }
+                    onClick={() => setHerramienta(id)}
+                    className={[
+                      'rounded px-2 py-1 text-xs transition',
+                      sinEscala
+                        ? 'cursor-not-allowed text-slate-300'
+                        : herramienta === id
+                          ? 'bg-sky-600 text-white'
+                          : 'text-slate-600 hover:bg-slate-100',
+                    ].join(' ')}
+                  >
+                    {etiqueta}
+                  </button>
+                )
+              })}
 
               <span className="mx-2 h-4 w-px bg-slate-200" />
 

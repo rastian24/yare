@@ -12,14 +12,28 @@ import { useApp } from '@/estado/store'
 import { useCalculo } from '@/estado/useCalculo'
 import { buscarSimbolo } from '@/simbologia/catalogo'
 import { IndiceEspacial, forzarOrtogonal, type Snap } from '@/cad/snapping'
-import { escalaDe, longitudPolilinea } from '@/dominio/calculo/longitudes'
-import { metros as fmtMetros } from '@/dominio/formato'
+import {
+  areaPoligono,
+  escalaDe,
+  longitudPolilinea,
+  puntoEnPoligono,
+} from '@/dominio/calculo/longitudes'
+import {
+  ambienteDesdePoligono,
+  centroide,
+  cierraElContorno,
+  medirPoligono,
+  seCruzaConsigoMismo,
+  VERTICES_MINIMOS,
+} from '@/dominio/calculo/ambientes'
+import { m2 as fmtM2, metros as fmtMetros } from '@/dominio/formato'
 import { urlDeBlob } from '@/persistencia/db'
 import { nuevoId } from '@/estado/store'
 import { severidadMaxima } from '@/normativa/aea770/motor'
 import { CapaGeometriaCAD } from './CapaGeometriaCAD'
+import { NuevoAmbiente } from './NuevoAmbiente'
 import { SimboloSVG } from './SimboloSVG'
-import type { Punto } from '@/dominio/tipos'
+import type { Escala, Punto, TipoAmbiente } from '@/dominio/tipos'
 
 const COLOR_CIRCUITO: Record<string, string> = {
   IUG: '#d97706',
@@ -43,6 +57,7 @@ export function EditorPlano() {
     circuitoActivo,
     seleccion,
     tramoEnCurso,
+    poligonoEnCurso,
     ortogonal,
     snapActivo,
     capasOcultas,
@@ -55,6 +70,12 @@ export function EditorPlano() {
     agregarPuntoTramo,
     cerrarTramo,
     cancelarTramo,
+    iniciarPoligono,
+    agregarPuntoPoligono,
+    deshacerPuntoPoligono,
+    cancelarPoligono,
+    agregarAmbiente,
+    remedirAmbientes,
     agregarPlano,
     actualizar,
   } = useApp()
@@ -69,6 +90,8 @@ export function EditorPlano() {
   const [paneando, setPaneando] = useState<{ x: number; y: number } | null>(null)
   const [urlImagen, setUrlImagen] = useState<string | null>(null)
   const [calibrando, setCalibrando] = useState<Punto[]>([])
+  /** Contorno ya cerrado, a la espera de que se confirmen nombre y tipo. */
+  const [ambientePendiente, setAmbientePendiente] = useState<Punto[] | null>(null)
 
   // --- Fondo raster --------------------------------------------------------
   useEffect(() => {
@@ -182,8 +205,7 @@ export function EditorPlano() {
       return
     }
 
-    const anterior = tramoEnCurso.at(-1)
-    const { punto, snap: s } = puntoEfectivo(bruto, herramienta === 'tramo' ? anterior : undefined)
+    const { punto, snap: s } = puntoEfectivo(bruto, anteriorParaOrtogonal())
 
     setCursor(punto)
     setSnap(s)
@@ -200,8 +222,7 @@ export function EditorPlano() {
     if (ev.button !== 0) return
 
     const bruto = aCoordenadas(ev)
-    const anterior = tramoEnCurso.at(-1)
-    const { punto } = puntoEfectivo(bruto, herramienta === 'tramo' ? anterior : undefined)
+    const { punto } = puntoEfectivo(bruto, anteriorParaOrtogonal())
 
     switch (herramienta) {
       case 'colocar': {
@@ -230,6 +251,22 @@ export function EditorPlano() {
         break
       }
 
+      case 'ambiente': {
+        // Sin escala no hay superficie, y un ambiente sin superficie no sirve
+        // para nada aguas abajo: la barra de estado lo explica.
+        if (!escala?.calibrado) return
+
+        // Volver al primer vértice cierra el contorno, como en cualquier CAD.
+        if (cierraElContorno(poligonoEnCurso, punto, radioSnap * 1.5)) {
+          cerrarAmbiente()
+          return
+        }
+
+        if (poligonoEnCurso.length === 0) iniciarPoligono(punto)
+        else agregarPuntoPoligono(punto)
+        break
+      }
+
       case 'calibrar': {
         const nuevos = [...calibrando, punto]
         if (nuevos.length === 2) {
@@ -245,6 +282,8 @@ export function EditorPlano() {
               const f = p.planos[0]?.fuente
               if (f) f.calibracion = { p1: nuevos[0]!, p2: nuevos[1]!, metrosReales: metros }
             })
+            // La escala cambió: los contornos ya marcados valen otra superficie.
+            remedirAmbientes()
           }
           setCalibrando([])
           useApp.getState().setHerramienta('seleccionar')
@@ -277,8 +316,42 @@ export function EditorPlano() {
     }))
   }
 
-  // Doble clic cierra el tramo en curso.
+  /**
+   * Cierra el contorno del ambiente y pasa a confirmar nombre y tipo.
+   *
+   * El doble clic deja repetido el último vértice —el segundo clic ya lo
+   * agregó—, así que se descartan los consecutivos: no cambian la superficie
+   * pero ensucian el contorno guardado.
+   */
+  const cerrarAmbiente = () => {
+    const puntos = sinRepetidos(poligonoEnCurso)
+    if (puntos.length < VERTICES_MINIMOS) return
+
+    setAmbientePendiente(puntos)
+    cancelarPoligono()
+  }
+
+  const crearAmbiente = (nombre: string, tipo: TipoAmbiente) => {
+    if (!ambientePendiente) return
+
+    const ambiente = ambienteDesdePoligono({
+      id: nuevoId('amb'),
+      nombre,
+      tipo,
+      poligono: ambientePendiente,
+      escala,
+    })
+
+    if (ambiente) agregarAmbiente(ambiente)
+    setAmbientePendiente(null)
+  }
+
+  // Doble clic cierra el tramo o el ambiente en curso.
   const alDobleClic = () => {
+    if (herramienta === 'ambiente') {
+      cerrarAmbiente()
+      return
+    }
     if (herramienta !== 'tramo' || tramoEnCurso.length < 2) return
 
     // Se vinculan los elementos que caen cerca de los vértices del tramo.
@@ -296,22 +369,57 @@ export function EditorPlano() {
 
   useEffect(() => {
     const alTecla = (ev: KeyboardEvent) => {
+      // Con el foco en un campo mandan las teclas del campo: Backspace borra
+      // texto, no vértices.
+      const destino = ev.target as HTMLElement | null
+      if (destino && /^(INPUT|SELECT|TEXTAREA)$/.test(destino.tagName)) {
+        if (ev.key === 'Escape') setAmbientePendiente(null)
+        return
+      }
+
       if (ev.key === 'Escape') {
         cancelarTramo()
+        cancelarPoligono()
         setCalibrando([])
+        setAmbientePendiente(null)
         setSeleccion([])
       }
-      if (ev.key === 'Enter' && tramoEnCurso.length >= 2) alDobleClic()
+      if (ev.key === 'Enter') {
+        if (herramienta === 'ambiente') cerrarAmbiente()
+        else if (tramoEnCurso.length >= 2) alDobleClic()
+      }
+      // Backspace deshace el último vértice, que es más barato que rehacer todo
+      // el contorno por un clic mal puesto.
+      if (ev.key === 'Backspace' && poligonoEnCurso.length > 0) {
+        ev.preventDefault()
+        deshacerPuntoPoligono()
+      }
     }
     window.addEventListener('keydown', alTecla)
     return () => window.removeEventListener('keydown', alTecla)
   })
 
+  /**
+   * Ambiente que contiene al punto. Ante contornos anidados gana el más chico,
+   * que es el local y no el envolvente.
+   */
   function ambienteEnPunto(p: Punto): string | undefined {
+    let elegido: { id: string; area: number } | null = null
+
     for (const a of proyecto.inmueble.ambientes) {
-      if (!a.poligono) continue
-      if (dentro(p, a.poligono)) return a.id
+      if (!a.poligono || !puntoEnPoligono(p, a.poligono)) continue
+
+      const area = areaPoligono(a.poligono)
+      if (!elegido || area < elegido.area) elegido = { id: a.id, area }
     }
+
+    return elegido?.id
+  }
+
+  /** Vértice desde el que se fuerza la ortogonalidad de la herramienta activa. */
+  function anteriorParaOrtogonal(): Punto | undefined {
+    if (herramienta === 'tramo') return tramoEnCurso.at(-1)
+    if (herramienta === 'ambiente') return poligonoEnCurso.at(-1)
     return undefined
   }
 
@@ -320,6 +428,12 @@ export function EditorPlano() {
 
   const tramoPreview =
     tramoEnCurso.length > 0 && cursor ? [...tramoEnCurso, cursor] : tramoEnCurso
+
+  const contornoPreview =
+    poligonoEnCurso.length > 0 && cursor ? [...poligonoEnCurso, cursor] : poligonoEnCurso
+  const medidasContorno = medirPoligono(contornoPreview, escala)
+  const contornoCruzado = seCruzaConsigoMismo(contornoPreview, true)
+  const puedeCerrarContorno = sinRepetidos(poligonoEnCurso).length >= VERTICES_MINIMOS
 
   const escalaTexto = vista.ancho / 1200
 
@@ -360,10 +474,13 @@ export function EditorPlano() {
           />
         )}
 
-        {/* Ambientes detectados */}
-        {proyecto.inmueble.ambientes.map((a) =>
-          a.poligono ? (
-            <g key={a.id}>
+        {/* Ambientes delimitados */}
+        {proyecto.inmueble.ambientes.map((a) => {
+          if (!a.poligono) return null
+          const centro = centroide(a.poligono)
+
+          return (
+            <g key={a.id} pointerEvents="none">
               <polygon
                 points={a.poligono.map((p) => `${p.x},${p.y}`).join(' ')}
                 fill="#22c55e"
@@ -372,9 +489,26 @@ export function EditorPlano() {
                 strokeOpacity={0.5}
                 strokeWidth={escalaTexto}
               />
+              {centro && (
+                <text
+                  x={centro.x}
+                  y={centro.y}
+                  textAnchor="middle"
+                  fontSize={12 * escalaTexto}
+                  fill="#15803d"
+                  className="select-none"
+                >
+                  <tspan x={centro.x}>{a.nombre}</tspan>
+                  <tspan x={centro.x} dy={13 * escalaTexto} fontSize={10 * escalaTexto}>
+                    {a.tipo === 'pasillo' || a.tipo === 'semicubierto'
+                      ? `${fmtM2(a.superficieM2)} · ${fmtMetros(a.longitudM ?? 0)}`
+                      : fmtM2(a.superficieM2)}
+                  </tspan>
+                </text>
+              )}
             </g>
-          ) : null,
-        )}
+          )
+        })}
 
         {/* Tramos */}
         {calculado.tramos.map((t) => {
@@ -417,6 +551,46 @@ export function EditorPlano() {
             strokeWidth={2.5 * escalaTexto}
             strokeDasharray={`${6 * escalaTexto} ${4 * escalaTexto}`}
           />
+        )}
+
+        {/* Ambiente en curso */}
+        {contornoPreview.length >= 2 && (
+          <g pointerEvents="none">
+            <polygon
+              points={contornoPreview.map((p) => `${p.x},${p.y}`).join(' ')}
+              fill={contornoCruzado ? '#f59e0b' : '#22c55e'}
+              fillOpacity={0.14}
+              stroke={contornoCruzado ? '#d97706' : '#16a34a'}
+              strokeWidth={2 * escalaTexto}
+              strokeDasharray={`${6 * escalaTexto} ${4 * escalaTexto}`}
+            />
+            {poligonoEnCurso.map((p, i) => (
+              <circle
+                key={i}
+                cx={p.x}
+                cy={p.y}
+                // El primer vértice se agranda cuando el contorno ya se puede
+                // cerrar: es el blanco al que hay que volver.
+                r={(i === 0 && puedeCerrarContorno ? 5 : 3) * escalaTexto}
+                fill={i === 0 && puedeCerrarContorno ? '#fff' : '#16a34a'}
+                stroke="#16a34a"
+                strokeWidth={1.5 * escalaTexto}
+              />
+            ))}
+            {medidasContorno && (
+              <text
+                x={centroide(contornoPreview)?.x ?? 0}
+                y={centroide(contornoPreview)?.y ?? 0}
+                textAnchor="middle"
+                fontSize={13 * escalaTexto}
+                fontWeight={600}
+                fill="#15803d"
+                className="select-none"
+              >
+                {fmtM2(medidasContorno.superficieM2)}
+              </text>
+            )}
+          </g>
         )}
 
         {/* Calibración */}
@@ -478,12 +652,30 @@ export function EditorPlano() {
         )}
       </svg>
 
+      {ambientePendiente && (
+        <NuevoAmbiente
+          poligono={ambientePendiente}
+          escala={escala}
+          bocasAdentro={
+            proyecto.elementos.filter(
+              (el) => !el.ambienteId && puntoEnPoligono(el.posicion, ambientePendiente),
+            ).length
+          }
+          onCrear={crearAmbiente}
+          onCancelar={() => setAmbientePendiente(null)}
+        />
+      )}
+
       <BarraEstado
         escala={escala}
         cursor={cursor}
         snap={snap}
         tramoEnCurso={tramoEnCurso}
         cursorActual={cursor}
+        herramienta={herramienta}
+        superficieContorno={medidasContorno?.superficieM2 ?? null}
+        verticesContorno={poligonoEnCurso.length}
+        contornoCruzado={contornoCruzado}
       />
     </div>
   )
@@ -491,14 +683,17 @@ export function EditorPlano() {
 
 // ---------------------------------------------------------------------------
 
-function dentro(p: Punto, poligono: Punto[]): boolean {
-  let d = false
-  for (let i = 0, j = poligono.length - 1; i < poligono.length; j = i++) {
-    const a = poligono[i]!
-    const b = poligono[j]!
-    if (a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x) d = !d
-  }
-  return d
+/** Descarta vértices consecutivos repetidos, que no aportan al contorno. */
+function sinRepetidos(puntos: Punto[]): Punto[] {
+  return puntos.filter((p, i) => {
+    const previo = puntos[i - 1]
+    return !previo || Math.hypot(p.x - previo.x, p.y - previo.y) > 1e-9
+  })
+}
+
+const AYUDA_POR_HERRAMIENTA: Record<string, string> = {
+  ambiente: 'Clic: vértice · Doble clic, Enter o volver al primer vértice: cerrar · Backspace: deshacer · Esc: cancelar',
+  tramo: 'Doble clic o Enter: cerrar tramo · Esc: cancelar',
 }
 
 function BarraEstado({
@@ -506,17 +701,28 @@ function BarraEstado({
   snap,
   tramoEnCurso,
   cursorActual,
+  herramienta,
+  superficieContorno,
+  verticesContorno,
+  contornoCruzado,
 }: {
-  escala: ReturnType<typeof escalaDe> | null
+  escala: Escala | null
   cursor: Punto | null
   snap: Snap | null
   tramoEnCurso: Punto[]
   cursorActual: Punto | null
+  herramienta: string
+  /** Superficie del contorno que se está marcando, en m². */
+  superficieContorno: number | null
+  verticesContorno: number
+  contornoCruzado: boolean
 }) {
   const longitud =
     escala?.calibrado && tramoEnCurso.length > 0 && cursorActual
       ? longitudPolilinea([...tramoEnCurso, cursorActual]) * escala.metrosPorUnidad
       : null
+
+  const ayuda = AYUDA_POR_HERRAMIENTA[herramienta] ?? 'Rueda: zoom · Alt+arrastrar: desplazar'
 
   return (
     <div className="pointer-events-none absolute bottom-0 left-0 right-0 flex items-center gap-4 border-t border-slate-200 bg-white/90 px-3 py-1.5 text-xs text-slate-600 backdrop-blur">
@@ -526,14 +732,24 @@ function BarraEstado({
         </span>
       ) : (
         <span className="font-medium text-amber-700">
-          Sin calibrar — no se pueden medir longitudes
+          Sin calibrar — no se pueden medir longitudes ni superficies
         </span>
       )}
       {snap && <span className="text-emerald-700">Enganche: {snap.tipo}</span>}
       {longitud !== null && <span>Tramo: {fmtMetros(longitud)}</span>}
-      <span className="ml-auto text-slate-400">
-        Rueda: zoom · Alt+arrastrar: desplazar · Doble clic o Enter: cerrar tramo · Esc: cancelar
-      </span>
+
+      {herramienta === 'ambiente' && (
+        <span className={contornoCruzado ? 'font-medium text-amber-700' : ''}>
+          {superficieContorno !== null
+            ? `Ambiente: ${fmtM2(superficieContorno)} · ${verticesContorno} vértices`
+            : escala?.calibrado
+              ? 'Marcá los vértices del ambiente'
+              : 'Calibrá el plano para poder medir la superficie'}
+          {contornoCruzado && ' · el contorno se cruza consigo mismo'}
+        </span>
+      )}
+
+      <span className="ml-auto text-slate-400">Rueda: zoom · Alt+arrastrar: desplazar · {ayuda}</span>
     </div>
   )
 }
