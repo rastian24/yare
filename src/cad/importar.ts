@@ -120,9 +120,14 @@ export function importarDXF(texto: string, unidadForzada?: UnidadDXF): Resultado
     bbox: { min: { x: number; y: number }; max: { x: number; y: number } }
   }
 
+  // El eje Y del DXF crece hacia arriba y el del SVG hacia abajo. Se invierte
+  // UNA vez, acá, en lugar de arrastrar transformaciones por todo el editor.
+  // Negar una coordenada es una isometría: no cambia distancias ni áreas (el
+  // área de Gauss se toma en valor absoluto), así que todo el cálculo
+  // normativo aguas abajo es indiferente al cambio.
   const bbox: BBox = {
-    min: { x: bboxLib.min.x, y: bboxLib.min.y },
-    max: { x: bboxLib.max.x, y: bboxLib.max.y },
+    min: { x: bboxLib.min.x, y: -bboxLib.max.y },
+    max: { x: bboxLib.max.x, y: -bboxLib.min.y },
   }
 
   // Tolerancia de cierre proporcional al tamaño del dibujo: un plano en mm y
@@ -135,7 +140,7 @@ export function importarDXF(texto: string, unidadForzada?: UnidadDXF): Resultado
   for (const pl of polylines) {
     const puntos: Punto[] = pl.vertices
       .filter((v) => Number.isFinite(v[0]) && Number.isFinite(v[1]))
-      .map((v) => ({ x: v[0]!, y: v[1]! }))
+      .map((v) => ({ x: v[0]!, y: -v[1]! }))
 
     if (puntos.length < 2) continue
 
@@ -176,7 +181,8 @@ export function importarDXF(texto: string, unidadForzada?: UnidadDXF): Resultado
       if (!contenido) continue
       if (e.x === undefined || e.y === undefined) continue
 
-      const posicion = transformarPunto({ x: e.x, y: e.y }, e.transforms ?? [])
+      const bruto = transformarPunto({ x: e.x, y: e.y }, e.transforms ?? [])
+      const posicion = { x: bruto.x, y: -bruto.y }
 
       entidades.push({
         tipo: 'texto',

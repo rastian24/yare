@@ -97,6 +97,43 @@ describe('Unidades ($INSUNITS)', () => {
   })
 })
 
+describe('Orientación del eje Y', () => {
+  /**
+   * El DXF tiene el eje Y hacia arriba y el SVG hacia abajo. Se invierte al
+   * importar para no arrastrar transformaciones por el editor. Negar una
+   * coordenada es una isometría, así que distancias y áreas no cambian.
+   */
+  it('invierte el eje Y al importar', () => {
+    const r = importarDXF(f.dxf({ insUnits: 4, entidades: f.rectangulo(0, 0, 5000, 4000) }))
+
+    // En el DXF el rectángulo va de y=0 a y=4000; invertido va de -4000 a 0.
+    expect(r.bbox.min.y).toBeCloseTo(-4000, 3)
+    expect(r.bbox.max.y).toBeCloseTo(0, 3)
+    expect(r.bbox.min.x).toBeCloseTo(0, 3)
+    expect(r.bbox.max.x).toBeCloseTo(5000, 3)
+  })
+
+  it('la inversión no altera el área', () => {
+    const r = importarDXF(f.dxf({ insUnits: 4, entidades: f.poligonoL(3000) }))
+    const poli = r.entidades.find((e) => e.tipo === 'polilinea')
+    if (poli?.tipo !== 'polilinea') throw new Error('esperaba una polilínea')
+
+    expect(areaPoligono(poli.puntos) * 0.001 ** 2).toBeCloseTo(27, 4)
+  })
+
+  it('el texto queda dentro del polígono después de invertir', () => {
+    const entidades = [
+      f.rectangulo(0, 0, 4000, 3000, 'LOCALES'),
+      f.texto(2000, 1500, 'COCINA', 'LOCALES'),
+    ].join('\n')
+
+    const r = importarDXF(f.dxf({ insUnits: 4, entidades, capas: ['0', 'LOCALES'] }))
+    const detectados = detectarAmbientes(r.entidades, r.unidades)
+
+    expect(detectados[0]!.nombre).toBe('COCINA')
+  })
+})
+
 describe('Denormalización de bloques', () => {
   it('aplica la escala de un INSERT a la geometría del bloque', () => {
     const r = importarDXF(
@@ -272,11 +309,12 @@ describe('Snapping', () => {
     const r = importarDXF(f.dxf({ insUnits: 4, entidades }))
     const indice = new IndiceEspacial(r.entidades, r.bbox)
 
-    const s = indice.snap({ x: 515, y: 515 }, 60, new Set(['interseccion']))
+    // El eje Y se invierte al importar, así que el cruce queda en (500, -500).
+    const s = indice.snap({ x: 515, y: -515 }, 60, new Set(['interseccion']))
     expect(s).not.toBeNull()
     expect(s!.tipo).toBe('interseccion')
     expect(s!.punto.x).toBeCloseTo(500, 3)
-    expect(s!.punto.y).toBeCloseTo(500, 3)
+    expect(s!.punto.y).toBeCloseTo(-500, 3)
   })
 
   it('no engancha nada fuera del radio', () => {
