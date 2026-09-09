@@ -2,7 +2,7 @@ name: Deploy a GitHub Pages
 
 on:
   push:
-    branches: [claude/electrical-circuit-design-app-7k6eb4]
+    branches: [main]
   # Permite disparar el deploy a mano desde la pestaña Actions sin necesidad
   # de un push nuevo.
   workflow_dispatch:
