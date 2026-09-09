@@ -420,6 +420,10 @@ export function EditorPlano() {
   function anteriorParaOrtogonal(): Punto | undefined {
     if (herramienta === 'tramo') return tramoEnCurso.at(-1)
     if (herramienta === 'ambiente') return poligonoEnCurso.at(-1)
+    // Calibrar mide sobre una pared, que en el plano es horizontal o vertical:
+    // sin ortogonalidad un clic torcido alarga la referencia y la escala sale
+    // corta para todo el proyecto.
+    if (herramienta === 'calibrar') return calibrando.at(-1)
     return undefined
   }
 
