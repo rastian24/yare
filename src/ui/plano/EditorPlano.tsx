@@ -121,20 +121,27 @@ export function EditorPlano() {
 
   const escala = plano ? escalaDe(plano) : null
 
-  /** Convierte coordenadas de pantalla a coordenadas del plano. */
-  const aCoordenadas = useCallback(
-    (ev: React.MouseEvent): Punto => {
-      const svg = svgRef.current
-      if (!svg) return { x: 0, y: 0 }
+  /**
+   * Convierte coordenadas de pantalla a coordenadas del plano.
+   *
+   * Vía getScreenCTM(), no a mano con getBoundingClientRect(): el viewBox casi
+   * nunca tiene la misma relación de aspecto que el panel, así que el
+   * navegador lo letterboxea (preserveAspectRatio por defecto), y una regla de
+   * tres simple sobre el rect queda desfasada del punto real bajo el cursor.
+   * getScreenCTM() ya incorpora ese letterboxeo.
+   */
+  const aCoordenadas = useCallback((ev: React.MouseEvent): Punto => {
+    const svg = svgRef.current
+    const ctm = svg?.getScreenCTM()
+    if (!svg || !ctm) return { x: 0, y: 0 }
 
-      const rect = svg.getBoundingClientRect()
-      const px = (ev.clientX - rect.left) / rect.width
-      const py = (ev.clientY - rect.top) / rect.height
+    const p = svg.createSVGPoint()
+    p.x = ev.clientX
+    p.y = ev.clientY
+    const local = p.matrixTransform(ctm.inverse())
 
-      return { x: vista.x + px * vista.ancho, y: vista.y + py * vista.alto }
-    },
-    [vista],
-  )
+    return { x: local.x, y: local.y }
+  }, [])
 
   /** Radio de enganche en unidades del plano, constante en pantalla. */
   const radioSnap = vista.ancho * 0.012
