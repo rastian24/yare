@@ -52,7 +52,7 @@ export function GaleriaSimbolos() {
             <h3 className="mb-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">
               {NOMBRES_CATEGORIA[categoria]}
             </h3>
-            <div className="grid grid-cols-4 gap-1">
+            <div className="grid grid-cols-3 gap-1">
               {simbolos.map((s) => (
                 <BotonSimbolo
                   key={s.id}
@@ -91,18 +91,23 @@ function BotonSimbolo({
     <button
       type="button"
       onClick={onClick}
+      // El título sigue llevando el nombre completo y la nota normativa, que no
+      // entran en la etiqueta.
       title={`${simbolo.nombre}${simbolo.nota ? `\n\n${simbolo.nota}` : ''}`}
       className={[
-        'flex aspect-square items-center justify-center rounded border transition',
+        'flex flex-col items-center gap-1 rounded border px-1 py-1.5 transition',
         activo
           ? 'border-sky-500 bg-sky-50 text-sky-700'
           : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400',
         incompatible ? 'opacity-40' : '',
       ].join(' ')}
     >
-      <svg viewBox="0 0 24 24" className="h-7 w-7">
+      <svg viewBox="0 0 24 24" className="h-7 w-7 shrink-0">
         <g dangerouslySetInnerHTML={{ __html: simbolo.svg }} />
       </svg>
+      <span className="w-full text-center text-[10px] leading-tight hyphens-auto break-words">
+        {simbolo.nombreCorto}
+      </span>
     </button>
   )
 }
