@@ -30,6 +30,12 @@ export interface RefMaterial {
 export interface Simbolo {
   id: string
   nombre: string
+  /**
+   * Nombre breve para la etiqueta de la galería, donde el nombre completo no
+   * entra. Se lee junto al título de la categoría, así que no hace falta
+   * repetirla: "Techo" bajo Iluminación, "De paso" bajo Cajas.
+   */
+  nombreCorto: string
   categoria: CategoriaSimbolo
   /**
    * Contenido SVG del símbolo, dibujado en una caja de 24×24 centrada en
@@ -65,6 +71,7 @@ export const SIMBOLOS: readonly Simbolo[] = [
   {
     id: 'luz_techo',
     nombre: 'Boca de iluminación en techo',
+    nombreCorto: 'Techo',
     categoria: 'iluminacion',
     svg: `<circle cx="12" cy="12" r="6" ${T}/>
           <line x1="7.8" y1="7.8" x2="16.2" y2="16.2" ${T}/>
@@ -82,6 +89,7 @@ export const SIMBOLOS: readonly Simbolo[] = [
   {
     id: 'luz_pared',
     nombre: 'Aplique de pared',
+    nombreCorto: 'Aplique',
     categoria: 'iluminacion',
     svg: `<circle cx="12" cy="12" r="5" ${T}/>
           <line x1="8.5" y1="8.5" x2="15.5" y2="15.5" ${T}/>
@@ -97,6 +105,7 @@ export const SIMBOLOS: readonly Simbolo[] = [
   {
     id: 'ventilador',
     nombre: 'Ventilador de techo o extractor',
+    nombreCorto: 'Ventilador',
     categoria: 'iluminacion',
     svg: `<circle cx="12" cy="12" r="2" ${T}/>
           <path d="M12 10 C12 5, 17 5, 17 9" ${T}/>
@@ -117,6 +126,7 @@ export const SIMBOLOS: readonly Simbolo[] = [
   {
     id: 'toma_10a',
     nombre: 'Tomacorriente 2P+T 10 A',
+    nombreCorto: 'Toma 10 A',
     categoria: 'tomacorriente',
     svg: `<path d="M4 12 A8 8 0 0 1 20 12 Z" ${T}/>
           <line x1="4" y1="12" x2="20" y2="12" ${T}/>
@@ -136,6 +146,7 @@ export const SIMBOLOS: readonly Simbolo[] = [
   {
     id: 'toma_20a',
     nombre: 'Tomacorriente 2P+T 20 A (uso especial)',
+    nombreCorto: 'Toma 20 A',
     categoria: 'tomacorriente',
     svg: `<path d="M4 12 A8 8 0 0 1 20 12 Z" ${T}/>
           <line x1="4" y1="12" x2="20" y2="12" ${T}/>
@@ -156,6 +167,7 @@ export const SIMBOLOS: readonly Simbolo[] = [
   {
     id: 'toma_mesada',
     nombre: 'Tomacorriente sobre mesada',
+    nombreCorto: 'Mesada',
     categoria: 'tomacorriente',
     svg: `<path d="M4 12 A8 8 0 0 1 20 12 Z" ${T}/>
           <line x1="4" y1="12" x2="20" y2="12" ${T}/>
@@ -176,6 +188,7 @@ export const SIMBOLOS: readonly Simbolo[] = [
   {
     id: 'toma_fijo',
     nombre: 'Módulo para electrodoméstico de ubicación fija',
+    nombreCorto: 'Equipo fijo',
     categoria: 'tomacorriente',
     svg: `<rect x="5" y="7" width="14" height="10" rx="1" ${T}/>
           <line x1="9" y1="10" x2="9" y2="14" ${T}/>
@@ -198,6 +211,7 @@ export const SIMBOLOS: readonly Simbolo[] = [
   {
     id: 'llave_unipolar',
     nombre: 'Interruptor de efecto unipolar',
+    nombreCorto: 'Unipolar',
     categoria: 'interruptor',
     svg: `<circle cx="7" cy="17" r="1.5" ${T}/>
           <line x1="8" y1="16" x2="17" y2="7" ${T}/>`,
@@ -215,6 +229,7 @@ export const SIMBOLOS: readonly Simbolo[] = [
   {
     id: 'llave_combinacion',
     nombre: 'Interruptor de combinación',
+    nombreCorto: 'Combinación',
     categoria: 'interruptor',
     svg: `<circle cx="7" cy="17" r="1.5" ${T}/>
           <line x1="8" y1="16" x2="17" y2="7" ${T}/>
@@ -234,6 +249,7 @@ export const SIMBOLOS: readonly Simbolo[] = [
   {
     id: 'llave_punto_muerto',
     nombre: 'Interruptor de punto muerto',
+    nombreCorto: 'Punto muerto',
     categoria: 'interruptor',
     svg: `<circle cx="7" cy="17" r="1.5" ${T}/>
           <line x1="8" y1="16" x2="17" y2="7" ${T}/>
@@ -257,6 +273,7 @@ export const SIMBOLOS: readonly Simbolo[] = [
   {
     id: 'tablero_principal',
     nombre: 'Tablero principal',
+    nombreCorto: 'Principal',
     categoria: 'tablero',
     svg: `<rect x="3" y="6" width="18" height="12" rx="1" ${T}/>
           <line x1="3" y1="10" x2="21" y2="10" ${T}/>
@@ -272,6 +289,7 @@ export const SIMBOLOS: readonly Simbolo[] = [
   {
     id: 'tablero_seccional',
     nombre: 'Tablero seccional',
+    nombreCorto: 'Seccional',
     categoria: 'tablero',
     svg: `<rect x="4" y="7" width="16" height="10" rx="1" ${T}/>
           <rect x="7" y="11" width="3" height="4" ${T}/>
@@ -289,6 +307,7 @@ export const SIMBOLOS: readonly Simbolo[] = [
   {
     id: 'jabalina',
     nombre: 'Jabalina de puesta a tierra',
+    nombreCorto: 'Jabalina',
     categoria: 'puesta_tierra',
     svg: `<line x1="12" y1="4" x2="12" y2="14" ${T}/>
           <line x1="6" y1="14" x2="18" y2="14" ${T}/>
@@ -311,6 +330,7 @@ export const SIMBOLOS: readonly Simbolo[] = [
   {
     id: 'caja_paso',
     nombre: 'Caja de paso',
+    nombreCorto: 'De paso',
     categoria: 'caja',
     svg: `<rect x="7" y="7" width="10" height="10" ${T}/>`,
     circuitosPermitidos: ['IUG', 'TUG', 'TUE'],
@@ -323,6 +343,7 @@ export const SIMBOLOS: readonly Simbolo[] = [
   {
     id: 'caja_derivacion',
     nombre: 'Caja de derivación',
+    nombreCorto: 'Derivación',
     categoria: 'caja',
     svg: `<rect x="7" y="7" width="10" height="10" ${T}/>
           <line x1="7" y1="7" x2="17" y2="17" ${T}/>`,
@@ -335,6 +356,7 @@ export const SIMBOLOS: readonly Simbolo[] = [
   {
     id: 'caja_losa',
     nombre: 'Caja en losa 100×100 mm',
+    nombreCorto: 'En losa',
     categoria: 'caja',
     svg: `<rect x="6" y="6" width="12" height="12" ${T}/>
           <line x1="6" y1="6" x2="18" y2="18" ${T}/>

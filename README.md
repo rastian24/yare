@@ -75,6 +75,15 @@ llevan fecha visible y se exportan a CSV. Los valores sembrados son orientativos
 y están marcados como tales: con la inflación argentina, cualquier precio
 embebido nace viejo.
 
+**Archivo de proyecto.** Todo se guarda solo en el navegador, y además se puede
+exportar a un archivo y volver a importarlo: respaldo, mudanza a otra máquina o
+pase a un colega. El archivo se lleva el plano adentro —la foto o el DXF
+original, que viven aparte en IndexedDB—, así que la importación abre con el
+fondo puesto y no con las bocas flotando en el vacío. Lo que entra se valida
+campo por campo antes de tocar el cálculo: un archivo ajeno, recortado o editado
+a mano avisa en pantalla en vez de romper adentro, y las exportaciones viejas
+—que eran el proyecto pelado— se siguen leyendo.
+
 ## Cómo está armado
 
 ```
@@ -90,7 +99,7 @@ src/
   cad/              importación DXF: unidades, capas, snapping, ambientes
   simbologia/       galería de símbolos (base IRAM 4504)
   ui/               React
-  persistencia/     IndexedDB
+  persistencia/     IndexedDB y archivo de proyecto (exportar/importar)
 ```
 
 El motor normativo no depende de React ni del navegador, así que se testea

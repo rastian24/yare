@@ -157,8 +157,16 @@ export const useApp = create<EstadoApp>((set, get) => ({
   capasOcultas: new Set(),
   guardando: false,
 
+  // Las capas ocultas son del plano que se va: si no se limpian, un proyecto
+  // importado abre con capas apagadas por nombre sin que nadie lo haya pedido.
   reemplazarProyecto: (p) =>
-    set({ proyecto: p, seleccion: [], tramoEnCurso: [], poligonoEnCurso: [] }),
+    set({
+      proyecto: p,
+      seleccion: [],
+      tramoEnCurso: [],
+      poligonoEnCurso: [],
+      capasOcultas: new Set(),
+    }),
 
   actualizar: (fn) =>
     set((estado) => {

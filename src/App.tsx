@@ -12,6 +12,7 @@ import { PanelPresupuesto } from '@/ui/presupuesto/PanelPresupuesto'
 import { Unifilar } from '@/ui/unifilar/Unifilar'
 import { Memoria } from '@/ui/memoria/Memoria'
 import { listarProyectos, cargarProyecto, guardarProyecto } from '@/persistencia/db'
+import { archivoDeProyecto, importarDesdeArchivo, nombreDeArchivo } from '@/persistencia/archivo'
 
 type Vista = 'plano' | 'materiales' | 'presupuesto' | 'unifilar' | 'memoria'
 type PanelLateral = 'simbolos' | 'circuitos' | 'inmueble' | 'plano'
@@ -34,6 +35,7 @@ const PANELES: Array<{ id: PanelLateral; etiqueta: string }> = [
 export function App() {
   const [vista, setVista] = useState<Vista>('plano')
   const [panel, setPanel] = useState<PanelLateral>('plano')
+  const [errorArchivo, setErrorArchivo] = useState<string | null>(null)
   const { proyecto, herramienta, setHerramienta, ortogonal, setOrtogonal, snapActivo, setSnapActivo } =
     useApp()
   const { reemplazarProyecto } = useApp()
@@ -56,14 +58,29 @@ export function App() {
     void guardarProyecto(p)
   }
 
-  const exportarJSON = () => {
-    const blob = new Blob([JSON.stringify(proyecto, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${proyecto.nombre.replace(/[^\w\s-]/g, '')}.json`
-    a.click()
-    URL.revokeObjectURL(url)
+  const exportarJSON = async () => {
+    setErrorArchivo(null)
+    try {
+      const blob = await archivoDeProyecto(proyecto)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = nombreDeArchivo(proyecto)
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      setErrorArchivo(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  const importarJSON = async (archivo: File) => {
+    setErrorArchivo(null)
+    try {
+      reemplazarProyecto(await importarDesdeArchivo(archivo))
+      setVista('plano')
+    } catch (e) {
+      setErrorArchivo(e instanceof Error ? e.message : String(e))
+    }
   }
 
   const esDXF = proyecto.planos[0]?.fuente.tipo === 'dxf'
@@ -114,11 +131,29 @@ export function App() {
 
           <button
             type="button"
-            onClick={exportarJSON}
+            onClick={() => void exportarJSON()}
+            title="Descargar el proyecto en un archivo, con el plano adentro"
             className="rounded border border-slate-300 px-2 py-1 hover:bg-slate-50"
           >
             Exportar
           </button>
+          <label
+            title="Abrir un proyecto exportado antes, desde esta u otra máquina"
+            className="cursor-pointer rounded border border-slate-300 px-2 py-1 hover:bg-slate-50"
+          >
+            <input
+              type="file"
+              className="hidden"
+              accept="application/json,.json"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) void importarJSON(f)
+                // Sin esto, volver a elegir el mismo archivo no dispara nada.
+                e.target.value = ''
+              }}
+            />
+            Importar
+          </label>
           <button
             type="button"
             onClick={nuevo}
@@ -128,6 +163,21 @@ export function App() {
           </button>
         </div>
       </header>
+
+      {/* Importar o exportar puede fallar por el archivo elegido, no por un
+          error de programa: se explica en pantalla en vez de en la consola. */}
+      {errorArchivo && (
+        <div className="flex items-start gap-3 border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800">
+          <span className="flex-1">{errorArchivo}</span>
+          <button
+            type="button"
+            onClick={() => setErrorArchivo(null)}
+            className="shrink-0 rounded px-2 text-red-700 hover:bg-red-100"
+          >
+            Cerrar
+          </button>
+        </div>
+      )}
 
       <div className="flex min-h-0 flex-1">
         {/* --- Panel izquierdo --- */}
