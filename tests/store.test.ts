@@ -72,3 +72,51 @@ describe('establecerPlano', () => {
     expect(useApp.getState().capasOcultas.size).toBe(0)
   })
 })
+
+describe('borrarElementos', () => {
+  beforeEach(() => {
+    const proyecto = proyectoBase({ planos: [planoCalibrado()] })
+    proyecto.tramos = [
+      tramoHasta('tramo-1', ['tablero', 'el-1'], 5),
+      tramoHasta('tramo-2', ['el-1'], 3),
+    ]
+    useApp.getState().reemplazarProyecto(proyecto)
+  })
+
+  it('borra todos los elementos pedidos de una sola pasada', () => {
+    const antes = useApp.getState().proyecto.elementos.length
+    useApp.getState().borrarElementos(['el-1', 'el-2'])
+
+    const { elementos } = useApp.getState().proyecto
+    expect(elementos).toHaveLength(antes - 2)
+    expect(elementos.some((e) => e.id === 'el-1' || e.id === 'el-2')).toBe(false)
+  })
+
+  it('desvincula los tramos y descarta los que se quedan sin extremos', () => {
+    useApp.getState().borrarElementos(['el-1'])
+
+    const { tramos } = useApp.getState().proyecto
+    expect(tramos.map((t) => t.id)).toEqual(['tramo-1'])
+    expect(tramos[0]!.elementoIds).toEqual(['tablero'])
+  })
+
+  it('saca de la selección lo que ya no está', () => {
+    useApp.getState().setSeleccion(['el-1', 'el-2'])
+    useApp.getState().borrarElementos(['el-1'])
+
+    expect(useApp.getState().seleccion).toEqual(['el-2'])
+  })
+
+  it('no toca el proyecto si no hay nada que borrar', () => {
+    const antes = useApp.getState().proyecto
+    useApp.getState().borrarElementos([])
+
+    expect(useApp.getState().proyecto).toBe(antes)
+  })
+
+  it('borrarElemento sigue borrando de a uno', () => {
+    useApp.getState().borrarElemento('el-1')
+
+    expect(useApp.getState().proyecto.elementos.some((e) => e.id === 'el-1')).toBe(false)
+  })
+})
