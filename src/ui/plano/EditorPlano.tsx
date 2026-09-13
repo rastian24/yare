@@ -76,7 +76,6 @@ export function EditorPlano() {
     cancelarPoligono,
     agregarAmbiente,
     remedirAmbientes,
-    agregarPlano,
     actualizar,
   } = useApp()
 
@@ -428,7 +427,7 @@ export function EditorPlano() {
   }
 
   // --- Render --------------------------------------------------------------
-  if (!plano) return <SinPlano onCargar={agregarPlano} />
+  if (!plano) return <SinPlano />
 
   const tramoPreview =
     tramoEnCurso.length > 0 && cursor ? [...tramoEnCurso, cursor] : tramoEnCurso
@@ -758,8 +757,7 @@ function BarraEstado({
   )
 }
 
-function SinPlano({ onCargar }: { onCargar: (p: never) => void }) {
-  void onCargar
+function SinPlano() {
   return (
     <div className="flex h-full items-center justify-center p-8 text-center">
       <div className="max-w-md">

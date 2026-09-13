@@ -11,11 +11,11 @@ import { useApp, nuevoId } from '@/estado/store'
 import { importarDXF, pareceDWG, ErrorDWG, type ResultadoImportacion } from '@/cad/importar'
 import { diagnosticarUnidades, NOMBRE_UNIDAD } from '@/cad/unidades'
 import { detectarAmbientes, aAmbiente, type AmbienteDetectado } from '@/cad/ambientes'
-import { guardarBlob } from '@/persistencia/db'
-import type { UnidadDXF } from '@/dominio/tipos'
+import { borrarBlob, guardarBlob } from '@/persistencia/db'
+import type { Plano, UnidadDXF } from '@/dominio/tipos'
 
 export function CargarPlano() {
-  const { proyecto, agregarPlano, setAmbientes } = useApp()
+  const { proyecto, establecerPlano, setAmbientes } = useApp()
   const [error, setError] = useState<string | null>(null)
   const [pendiente, setPendiente] = useState<{
     resultado: ResultadoImportacion
@@ -25,11 +25,28 @@ export function CargarPlano() {
   } | null>(null)
   const [detectados, setDetectados] = useState<AmbienteDetectado[] | null>(null)
   const [capaElegida, setCapaElegida] = useState<string>('')
+  const [reemplazado, setReemplazado] = useState(false)
 
   const yaHayPlano = proyecto.planos.length > 0
 
+  /**
+   * Deja el plano nuevo como único del proyecto y descarta el archivo del
+   * anterior. Apilarlos no servía: todo lee `planos[0]`, así que al reemplazar
+   * seguía viéndose la imagen vieja.
+   */
+  async function reemplazar(plano: Plano) {
+    const anterior = proyecto.planos[0] ?? null
+    establecerPlano(plano)
+    setReemplazado(anterior !== null)
+
+    if (anterior && anterior.fuente.blobId !== plano.fuente.blobId) {
+      await borrarBlob(anterior.fuente.blobId)
+    }
+  }
+
   async function alElegirArchivo(archivo: File) {
     setError(null)
+    setReemplazado(false)
     const blobId = nuevoId('blob')
 
     try {
@@ -52,7 +69,7 @@ export function CargarPlano() {
         })
 
         const dim = await dimensionesDeImagen(archivo)
-        agregarPlano({
+        await reemplazar({
           id: nuevoId('plano'),
           nombre: archivo.name,
           fuente: {
@@ -86,7 +103,7 @@ export function CargarPlano() {
     }
   }
 
-  function confirmarDXF(unidad: UnidadDXF) {
+  async function confirmarDXF(unidad: UnidadDXF) {
     if (!pendiente) return
 
     const resultado =
@@ -94,7 +111,7 @@ export function CargarPlano() {
         ? pendiente.resultado
         : importarDXF(pendiente.texto, unidad)
 
-    agregarPlano({
+    await reemplazar({
       id: nuevoId('plano'),
       nombre: pendiente.nombre,
       fuente: {
@@ -212,7 +229,7 @@ export function CargarPlano() {
             <button
               key={d.unidad}
               type="button"
-              onClick={() => confirmarDXF(d.unidad)}
+              onClick={() => void confirmarDXF(d.unidad)}
               className={[
                 'flex w-full items-center justify-between rounded border px-3 py-2 text-left text-sm transition',
                 d.unidad === resultado.unidades
@@ -230,7 +247,13 @@ export function CargarPlano() {
           ))}
         </div>
 
-        <Boton secundario onClick={() => setPendiente(null)}>
+        <Boton
+          secundario
+          onClick={() => {
+            void borrarBlob(pendiente.blobId)
+            setPendiente(null)
+          }}
+        >
           Cancelar
         </Boton>
       </Panel>
@@ -262,6 +285,13 @@ export function CargarPlano() {
         Con un DXF las longitudes salen exactas del archivo. Con una foto hay que calibrar sobre una
         distancia conocida.
       </p>
+
+      {reemplazado && (
+        <p className="mt-3 rounded bg-sky-50 px-3 py-2 text-sm text-sky-900">
+          Plano reemplazado. Los símbolos y tramos ya dibujados se conservan sobre el plano nuevo:
+          revisá que sigan en su lugar y volvé a calibrar si hace falta.
+        </p>
+      )}
 
       {error && (
         <p className="mt-3 rounded bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>

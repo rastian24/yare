@@ -59,7 +59,8 @@ export interface EstadoApp {
   setSnapActivo: (v: boolean) => void
   toggleCapa: (nombre: string) => void
 
-  agregarPlano: (plano: Plano) => void
+  /** Deja el proyecto con este plano como único plano, reemplazando el anterior. */
+  establecerPlano: (plano: Plano) => void
   agregarElemento: (elemento: Elemento) => void
   moverElemento: (id: string, posicion: Punto) => void
   actualizarElemento: (id: string, cambios: Partial<Elemento>) => void
@@ -194,7 +195,26 @@ export const useApp = create<EstadoApp>((set, get) => ({
       return { capasOcultas }
     }),
 
-  agregarPlano: (plano) => get().actualizar((p) => void p.planos.push(plano)),
+  establecerPlano: (plano) => {
+    const anterior = get().proyecto.planos[0] ?? null
+
+    get().actualizar((p) => {
+      // El proyecto trabaja siempre sobre un solo plano —todo lo demás lee
+      // `planos[0]`—, así que cargar uno nuevo reemplaza al anterior en lugar
+      // de dejarlo escondido detrás.
+      p.planos = [plano]
+
+      if (anterior && anterior.id !== plano.id) {
+        // Lo ya dibujado se queda: sus coordenadas son las del plano, y el
+        // usuario las reacomoda si el fondo nuevo no coincide.
+        for (const el of p.elementos) el.planoId = plano.id
+        for (const t of p.tramos) t.planoId = plano.id
+      }
+    })
+
+    // Las capas ocultas eran del archivo anterior.
+    if (anterior) set({ capasOcultas: new Set<string>(), seleccion: [] })
+  },
 
   agregarElemento: (elemento) => get().actualizar((p) => void p.elementos.push(elemento)),
 
