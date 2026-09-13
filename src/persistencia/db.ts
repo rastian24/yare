@@ -69,6 +69,10 @@ export async function guardarBlob(blob: BlobGuardado): Promise<void> {
   await db.blobs.put(blob)
 }
 
+export async function borrarBlob(id: string): Promise<void> {
+  await db.blobs.delete(id)
+}
+
 export async function cargarBlob(id: string): Promise<Blob | null> {
   const fila = await db.blobs.get(id)
   return fila?.datos ?? null
