@@ -33,7 +33,7 @@ import { severidadMaxima } from '@/normativa/aea770/motor'
 import { CapaGeometriaCAD } from './CapaGeometriaCAD'
 import { NuevoAmbiente } from './NuevoAmbiente'
 import { SimboloSVG } from './SimboloSVG'
-import type { Escala, Punto, TipoAmbiente } from '@/dominio/tipos'
+import type { Escala, Plano, Punto, TipoAmbiente } from '@/dominio/tipos'
 
 const COLOR_CIRCUITO: Record<string, string> = {
   IUG: '#d97706',
@@ -46,6 +46,32 @@ interface Vista {
   y: number
   ancho: number
   alto: number
+}
+
+/**
+ * Ancho de vista, en unidades de plano, para el que los trazos y textos tienen
+ * su tamaño nominal en px. Con `vista.ancho` mayor los engrosamos y con uno
+ * menor los afinamos, así se mantienen constantes en pantalla al hacer zoom.
+ */
+const ANCHO_REFERENCIA = 1200
+
+/**
+ * Encuadre que muestra el plano entero. Se usa para el arranque y, además,
+ * como referencia de tamaño de los símbolos: al ser independiente del zoom,
+ * los símbolos quedan anclados al plano en lugar de a la pantalla.
+ */
+function encuadreDe(plano: Plano): Vista {
+  if (plano.fuente.tipo === 'dxf') {
+    const { bbox } = plano.fuente
+    const margen = Math.max(bbox.max.x - bbox.min.x, bbox.max.y - bbox.min.y) * 0.05
+    return {
+      x: bbox.min.x - margen,
+      y: bbox.min.y - margen,
+      ancho: bbox.max.x - bbox.min.x + margen * 2,
+      alto: bbox.max.y - bbox.min.y + margen * 2,
+    }
+  }
+  return { x: 0, y: 0, ancho: plano.fuente.anchoPx, alto: plano.fuente.altoPx }
 }
 
 export function EditorPlano() {
@@ -65,6 +91,7 @@ export function EditorPlano() {
   const {
     agregarElemento,
     moverElemento,
+    borrarElementos,
     setSeleccion,
     iniciarTramo,
     agregarPuntoTramo,
@@ -119,19 +146,7 @@ export function EditorPlano() {
   // --- Encuadre inicial ----------------------------------------------------
   useEffect(() => {
     if (!plano) return
-
-    if (plano.fuente.tipo === 'dxf') {
-      const { bbox } = plano.fuente
-      const margen = Math.max(bbox.max.x - bbox.min.x, bbox.max.y - bbox.min.y) * 0.05
-      setVista({
-        x: bbox.min.x - margen,
-        y: bbox.min.y - margen,
-        ancho: bbox.max.x - bbox.min.x + margen * 2,
-        alto: bbox.max.y - bbox.min.y + margen * 2,
-      })
-    } else {
-      setVista({ x: 0, y: 0, ancho: plano.fuente.anchoPx, alto: plano.fuente.altoPx })
-    }
+    setVista(encuadreDe(plano))
   }, [plano?.id, plano?.fuente.tipo])
 
   // --- Índice de snapping --------------------------------------------------
@@ -393,6 +408,13 @@ export function EditorPlano() {
         ev.preventDefault()
         deshacerPuntoPoligono()
       }
+      // Suprimir borra los símbolos seleccionados. Vale con cualquier
+      // herramienta activa: la selección sobrevive al cambio de herramienta, y
+      // si no hay nada seleccionado no pasa nada.
+      if (ev.key === 'Delete' && seleccion.length > 0) {
+        ev.preventDefault()
+        borrarElementos(seleccion)
+      }
     }
     window.addEventListener('keydown', alTecla)
     return () => window.removeEventListener('keydown', alTecla)
@@ -438,7 +460,19 @@ export function EditorPlano() {
   const contornoCruzado = seCruzaConsigoMismo(contornoPreview, true)
   const puedeCerrarContorno = sinRepetidos(poligonoEnCurso).length >= VERTICES_MINIMOS
 
-  const escalaTexto = vista.ancho / 1200
+  /** Factor para trazos y textos: compensa el zoom y los deja fijos en pantalla. */
+  const escalaTexto = vista.ancho / ANCHO_REFERENCIA
+
+  /**
+   * Factor de los símbolos: fijo, atado al encuadre del plano y no al zoom.
+   *
+   * Un símbolo marca un punto de la instalación —una boca, un toma— que ocupa
+   * un lugar concreto en la obra, así que tiene que crecer con el plano como
+   * crecen los ambientes y el fondo. El encuadre completo da la referencia,
+   * para que arranque del mismo tamaño aparente que antes y siga sirviendo en
+   * un DXF en metros o en una foto de miles de píxeles.
+   */
+  const escalaSimbolo = encuadreDe(plano).ancho / ANCHO_REFERENCIA
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-white">
@@ -627,7 +661,7 @@ export function EditorPlano() {
               simbolo={simbolo}
               posicion={el.posicion}
               color={color}
-              escala={escalaTexto}
+              escala={escalaSimbolo}
               seleccionado={activo}
               onMouseDown={(ev) => {
                 if (herramienta !== 'seleccionar') return
@@ -695,6 +729,7 @@ function sinRepetidos(puntos: Punto[]): Punto[] {
 }
 
 const AYUDA_POR_HERRAMIENTA: Record<string, string> = {
+  seleccionar: 'Clic: seleccionar · Shift+clic: sumar · Arrastrar: mover · Supr: borrar',
   ambiente: 'Clic: vértice · Doble clic, Enter o volver al primer vértice: cerrar · Backspace: deshacer · Esc: cancelar',
   tramo: 'Doble clic o Enter: cerrar tramo · Esc: cancelar',
 }
@@ -725,7 +760,7 @@ function BarraEstado({
       ? longitudPolilinea([...tramoEnCurso, cursorActual]) * escala.metrosPorUnidad
       : null
 
-  const ayuda = AYUDA_POR_HERRAMIENTA[herramienta] ?? 'Rueda: zoom · Alt+arrastrar: desplazar'
+  const ayuda = AYUDA_POR_HERRAMIENTA[herramienta]
 
   return (
     <div className="pointer-events-none absolute bottom-0 left-0 right-0 flex items-center gap-4 border-t border-slate-200 bg-white/90 px-3 py-1.5 text-xs text-slate-600 backdrop-blur">
@@ -752,7 +787,9 @@ function BarraEstado({
         </span>
       )}
 
-      <span className="ml-auto text-slate-400">Rueda: zoom · Alt+arrastrar: desplazar · {ayuda}</span>
+      <span className="ml-auto text-slate-400">
+        Rueda: zoom · Alt+arrastrar: desplazar{ayuda ? ` · ${ayuda}` : ''}
+      </span>
     </div>
   )
 }

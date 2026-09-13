@@ -65,6 +65,8 @@ export interface EstadoApp {
   moverElemento: (id: string, posicion: Punto) => void
   actualizarElemento: (id: string, cambios: Partial<Elemento>) => void
   borrarElemento: (id: string) => void
+  /** Borra varios elementos de una sola vez, para no encadenar guardados. */
+  borrarElementos: (ids: string[]) => void
 
   iniciarTramo: (p: Punto) => void
   agregarPuntoTramo: (p: Punto) => void
@@ -230,14 +232,23 @@ export const useApp = create<EstadoApp>((set, get) => ({
       if (el) Object.assign(el, cambios)
     }),
 
-  borrarElemento: (id) =>
+  borrarElemento: (id) => get().borrarElementos([id]),
+
+  borrarElementos: (ids) => {
+    if (ids.length === 0) return
+    const borrados = new Set(ids)
+
     get().actualizar((p) => {
-      p.elementos = p.elementos.filter((e) => e.id !== id)
+      p.elementos = p.elementos.filter((e) => !borrados.has(e.id))
       // Un tramo que se queda sin extremos deja de tener sentido.
       p.tramos = p.tramos
-        .map((t) => ({ ...t, elementoIds: t.elementoIds.filter((e) => e !== id) }))
+        .map((t) => ({ ...t, elementoIds: t.elementoIds.filter((e) => !borrados.has(e)) }))
         .filter((t) => t.elementoIds.length > 0)
-    }),
+    })
+
+    // La selección no puede seguir apuntando a lo que ya no está.
+    set((estado) => ({ seleccion: estado.seleccion.filter((id) => !borrados.has(id)) }))
+  },
 
   iniciarTramo: (p) => set({ tramoEnCurso: [p], herramienta: 'tramo' }),
   agregarPuntoTramo: (p) => set((e) => ({ tramoEnCurso: [...e.tramoEnCurso, p] })),

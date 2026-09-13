@@ -8,7 +8,10 @@ interface Props {
   simbolo: Simbolo
   posicion: Punto
   color: string
-  /** Factor de la vista, para que el símbolo mantenga tamaño en pantalla. */
+  /**
+   * Factor de dibujo en unidades del plano. Es fijo respecto del zoom: el
+   * símbolo está anclado al plano, así que escala con él.
+   */
   escala: number
   seleccionado?: boolean
   onMouseDown?: (ev: React.MouseEvent) => void
